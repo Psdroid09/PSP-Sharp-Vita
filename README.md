@@ -23,7 +23,7 @@ Investigar una solución de nitidez que conserve los detalles de la imagen y que
 
 ## Estado
 
-<badge>Investigación inicial</badge>
+**Investigación inicial.**
 
 Este repositorio todavía no contiene un plugin instalable ni una compilación funcional. No hay evidencia suficiente para afirmar que un filtro personalizado pueda inyectarse de forma segura en el emulador oficial de PSP.
 
