@@ -90,3 +90,18 @@ Fuentes:
 ## Estado actual
 
 **Investigación y auditoría documental completadas parcialmente.** No existe todavía un método confirmado para inyectar un filtro de imagen en los juegos Chovy-Sign del PSPemu stock. No hay VPK, SUPRX, SKPRX ni binario instalable en este repositorio.
+
+
+## Anexo de investigación: hook de framebuffer
+
+Se encontró una referencia adicional: OASIS OS intercepta `sceDisplaySetFrameBuf` (NID `0x289D82FE`) desde un plugin PSP para CFW, recibe el puntero del framebuffer y dibuja antes de llamar a la función original.
+
+Código inspeccionado:
+- https://github.com/AndrewAltimit/oasis-os/blob/6512f72df3602da6a487c0e01c7a0ecbaca13c40/crates/oasis-plugin-psp/src/hook.rs
+- https://github.com/AndrewAltimit/rust-psp/blob/e4cc06f6fa50fa45dc3ae8b332e8a2b67625f588/psp/src/hook.rs
+
+La implementación depende de `sctrlHENFindFunction` y `sctrlHENPatchSyscall`, es decir, de infraestructura CFW PSP. Por eso aporta una referencia de cómo observar un framebuffer en un PSP CFW, pero **no demuestra compatibilidad con el PSPemu stock de Chovy-Sign**. Tampoco prueba que el buffer pueda procesarse sin problemas de caché, sincronización o rendimiento.
+
+La documentación detallada está en [research/FRAMEBUFFER_PIPELINE.md](../research/FRAMEBUFFER_PIPELINE.md).
+
+**Decisión actual:** mantener abierta la investigación, pero no compilar ni instalar un hook. El siguiente bloqueo a resolver es encontrar una interfaz de observación compatible con PSPemu stock, o demostrar que existe un mecanismo seguro del lado Vita para observar su buffer sin interferir con otras aplicaciones.
