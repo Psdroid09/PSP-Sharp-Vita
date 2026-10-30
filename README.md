@@ -23,9 +23,9 @@ Investigar una solución de nitidez que conserve los detalles de la imagen y que
 
 ## Estado
 
-**Investigación inicial.**
+**Investigación técnica en curso.**
 
-Este repositorio todavía no contiene un plugin instalable ni una compilación funcional. No hay evidencia suficiente para afirmar que un filtro personalizado pueda inyectarse de forma segura en el emulador oficial de PSP.
+La auditoría inicial encontró que las soluciones existentes más cercanas trabajan en Adrenaline o cambian el escalado global; ninguna demuestra todavía un filtro personalizado seguro para burbujas Chovy-Sign en el PSPemu oficial. Consulta la evaluación de viabilidad en docs/TECHNICAL_FEASIBILITY.md y la auditoría de referencias en research/REFERENCE_AUDIT.md.
 
 ## Seguridad
 
