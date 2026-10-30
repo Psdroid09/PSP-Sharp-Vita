@@ -51,3 +51,15 @@ tests/      Pruebas y herramientas de verificación
 ## Idioma
 
 La documentación principal de este proyecto se mantiene en español.
+
+
+## Laboratorio de filtros (PC)
+
+Ya está disponible una herramienta offline para comparar nearest-neighbour, bilinear, una aproximación sharp-bilinear y unsharp mask con la misma imagen:
+
+- [Guía del laboratorio](tools/README.md)
+- [Script de comparación](tools/filter_lab.py)
+
+Prueba rápida: `python -m pip install Pillow` y después `python tools/filter_lab.py --synthetic --output comparison.png`.
+
+El laboratorio solo procesa imágenes en PC. No es un plugin y no accede al PSPemu ni a la PS Vita.
