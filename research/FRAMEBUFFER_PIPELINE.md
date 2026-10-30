@@ -100,3 +100,29 @@ No se debe asumir que el procesador Vita puede hacer el trabajo sin afectar FPS,
 **Hallazgo parcial:** existe un hook de framebuffer en un PSP CFW (OASIS OS).  
 **Bloqueo vigente:** no se ha demostrado un punto de carga o hook equivalente en el PSPemu stock de Chovy-Sign.  
 **Entregable instalable:** ninguno. No hay VPK, SUPRX, SKPRX ni binario para instalar.
+
+
+## 8. APIs de pantalla del lado Vita
+
+VitaSDK documenta las funciones nativas:
+- `sceDisplaySetFrameBuf`: registra/actualiza los parámetros del framebuffer de pantalla.
+- `sceDisplayGetFrameBuf`: consulta los parámetros del framebuffer actual.
+- `sceDisplayRegisterVblankStartCallback`: registra un callback de inicio de VBlank.
+
+Referencias:
+- https://docs.vitasdk.org/group__SceDisplayUser.html
+- https://docs.vitasdk.org/psp2_2display_8h.html
+- https://github.com/yifanlu/taiHEN/blob/master/USAGE.md
+
+Estas APIs pertenecen al subsistema de pantalla Vita; **no documentan una forma directa de leer la VRAM interna del PSP ni de obtener el buffer previo al escalado del PSPemu**. `sceDisplayGetFrameBuf` devuelve los parámetros del framebuffer que está usando la pantalla Vita, lo cual no garantiza que sea el buffer PSP original ni que sea seguro modificarlo.
+
+Un hook Vita sobre `sceDisplaySetFrameBuf` podría ser investigado como punto de observación de la presentación final, pero todavía habría que demostrar:
+- que el PSPemu invoca esa ruta en la forma esperada;
+- qué proceso y módulo realizan la llamada;
+- el formato, pitch, dimensiones y ciclo de vida del buffer;
+- que el buffer puede modificarse antes del scanout sin competir con GPU/DMA;
+- que el hook puede limitarse al proceso correcto y descargarse limpiamente.
+
+taiHEN permite hooks sobre funciones de módulos/procesos, pero eso no elimina los riesgos de sincronización ni demuestra que el PSPemu use una ruta concreta. Un hook global de pantalla podría afectar LiveArea y aplicaciones nativas, por lo que queda descartado como primer experimento en la Vita principal.
+
+**Nueva evaluación:** las APIs Vita ofrecen un punto para investigar la presentación final, no una solución lista. La prioridad sigue siendo identificar una ruta específica del PSPemu y un buffer que se pueda observar de forma no destructiva.
