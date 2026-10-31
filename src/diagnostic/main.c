@@ -47,6 +47,7 @@ typedef struct ProbeRecord {
 static tai_hook_ref_t g_hook_ref;
 static SceUID g_hook_id = -1;
 static ProbeRecord g_records[MAX_RECORDS];
+static volatile unsigned int g_record_slots;
 static volatile unsigned int g_record_count;
 static volatile unsigned int g_nonnull_calls;
 static volatile unsigned int g_null_source_calls;
@@ -119,6 +120,7 @@ static int compat_set_framebuf_hook(
           (fb->base != NULL && fb->width > 0 && fb->height > 0 &&
            fb->pitch >= fb->width);
       __sync_synchronize();
+      __sync_fetch_and_add(&g_record_count, 1);
     }
   }
 
