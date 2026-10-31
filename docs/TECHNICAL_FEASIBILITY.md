@@ -112,7 +112,7 @@ La documentación detallada está en [research/FRAMEBUFFER_PIPELINE.md](../resea
 La auditoría del código de firmware 3.60 y de los headers VitaSDK encontró una interfaz más concreta que las APIs SceCompat genéricas:
 
 - `sceDisplaySetFrameBufForCompat` pertenece a SceDisplayUser y el código del firmware indica que este export solo está disponible para procesos emuladores PSP.
-- Su tercer argumento es un bloque `SceDisplaySetFrameBufForCompatOpt` de 0x18 bytes.
+- El quinto argumento del wrapper contiene el puntero al framebuffer de origen; el sexto contiene un destino opcional de conversión/captura.
 - Ese bloque contiene `frame_buf`, que apunta a `SceDisplayFrameBufForCompat` (0x1C bytes), con base, pitch en píxeles, formato, dimensiones y flags.
 - El descriptor define `SCE_DISPLAY_FRAMEBUF_FOR_COMPAT_FLAG_BILINEAR` (bit 20, `0x00100000`). El SDK documenta ese único bit como interpretado por firmware 3.60.
 
@@ -129,7 +129,7 @@ No se debe cambiar ese bit todavía. Primero hay que observar varios juegos y es
 
 ### Nueva secuencia de trabajo
 
-1. Diseñar un plugin de diagnóstico PSPemu-only que intercepte el import y lea únicamente el tercer argumento y el descriptor anidado, con validación de tamaños y sin modificar parámetros.
+1. Diseñar un plugin de diagnóstico PSPemu-only que intercepte el import y lea únicamente el quinto argumento (descriptor de origen), con validación de tamaño y sin modificar parámetros.
 2. Recopilar pocos eventos por sesión, sin registro por frame y sin leer memoria de píxeles.
 3. Comparar valores entre burbujas PSP y PS1/POPS, y registrar base/pitch/formato/dimensiones/flags.
 4. Si el descriptor apunta a una superficie consistente y el flag está desactivado, diseñar un test separado que fuerce solo el bit bilinear en una copia local del descriptor, sin escribir píxeles ni cambiar memoria de juego.
