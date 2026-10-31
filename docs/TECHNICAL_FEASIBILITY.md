@@ -105,3 +105,34 @@ La implementación depende de `sctrlHENFindFunction` y `sctrlHENPatchSyscall`, e
 La documentación detallada está en [research/FRAMEBUFFER_PIPELINE.md](../research/FRAMEBUFFER_PIPELINE.md).
 
 **Decisión actual:** mantener abierta la investigación, pero no compilar ni instalar un hook. El siguiente bloqueo a resolver es encontrar una interfaz de observación compatible con PSPemu stock, o demostrar que existe un mecanismo seguro del lado Vita para observar su buffer sin interferir con otras aplicaciones.
+
+
+## Nueva ruta candidata: framebuffer de compatibilidad PSPemu (firmware 3.60)
+
+La auditoría del código de firmware 3.60 y de los headers VitaSDK encontró una interfaz más concreta que las APIs SceCompat genéricas:
+
+- `sceDisplaySetFrameBufForCompat` pertenece a SceDisplayUser y el código del firmware indica que este export solo está disponible para procesos emuladores PSP.
+- Su tercer argumento es un bloque `SceDisplaySetFrameBufForCompatOpt` de 0x18 bytes.
+- Ese bloque contiene `frame_buf`, que apunta a `SceDisplayFrameBufForCompat` (0x1C bytes), con base, pitch en píxeles, formato, dimensiones y flags.
+- El descriptor define `SCE_DISPLAY_FRAMEBUF_FOR_COMPAT_FLAG_BILINEAR` (bit 20, `0x00100000`). El SDK documenta ese único bit como interpretado por firmware 3.60.
+
+Fuentes:
+- Firmware wrapper: https://github.com/shoui520/psp2/blob/0261b5803d8108135d6cd8dc8660834d865b4e24/sys/internal/usermode/src/driver_us/display.c
+- Export PSPemu-only: https://github.com/shoui520/psp2/blob/0261b5803d8108135d6cd8dc8660834d865b4e24/sys/internal/usermode/src/driver_us/exports.yml
+- Estructuras y flag: https://github.com/vitasdk/vita-headers/blob/e66ebe90b73d1fa4cce005a5b2072cec27322544/include/psp2/display.h
+
+### Qué implica para el filtro
+
+La primera opción que conviene comprobar ya no es un postproceso de píxeles: es observar el flag bilinear que el emulador entrega al subsistema de presentación. Si el bit ya está activo, el PSPemu puede estar solicitando suavizado bilinear al escalar. Si está desactivado, el flag ofrece una hipótesis de suavizado de bajo coste que podría evaluarse después mediante un prototipo reversible.
+
+No se debe cambiar ese bit todavía. Primero hay que observar varios juegos y escenas, comprobar si el flag varía entre PSP y POPS, y determinar si el driver aplica el filtrado exactamente como indica el header. El flag no equivale a un shader configurable ni a sharp-bilinear, y activar bilinear puede suavizar detalles finos.
+
+### Nueva secuencia de trabajo
+
+1. Diseñar un plugin de diagnóstico PSPemu-only que intercepte el import y lea únicamente el tercer argumento y el descriptor anidado, con validación de tamaños y sin modificar parámetros.
+2. Recopilar pocos eventos por sesión, sin registro por frame y sin leer memoria de píxeles.
+3. Comparar valores entre burbujas PSP y PS1/POPS, y registrar base/pitch/formato/dimensiones/flags.
+4. Si el descriptor apunta a una superficie consistente y el flag está desactivado, diseñar un test separado que fuerce solo el bit bilinear en una copia local del descriptor, sin escribir píxeles ni cambiar memoria de juego.
+5. Si el flag ya está activo o no cambia la imagen, detener esa vía y continuar solo si aparece un punto de postproceso verificable.
+
+**Estado:** se ha encontrado una interfaz PSPemu-only con descriptor de origen y un flag bilinear documentado. Sigue siendo una hipótesis de integración; no hay código compilado, plugin ni VPK instalable. No tocar la Vita principal todavía.
