@@ -53,6 +53,10 @@ tests/      Pruebas y herramientas de verificación
 La documentación principal de este proyecto se mantiene en español.
 
 
+## Investigación del framebuffer
+
+Se añadió una auditoría de las APIs SceCompat y SceDisplay para determinar si existe una vía segura de observar el framebuffer PSP en PSPemu stock: [research/COMPAT_FRAMEBUFFER_API.md](research/COMPAT_FRAMEBUFFER_API.md). La conclusión sigue siendo que no hay un punto de integración demostrado para Chovy-Sign; no hay plugin ni VPK instalable.
+
 ## Laboratorio de filtros (PC)
 
 Ya está disponible una herramienta offline para comparar nearest-neighbour, bilinear, una aproximación sharp-bilinear y unsharp mask con la misma imagen:
