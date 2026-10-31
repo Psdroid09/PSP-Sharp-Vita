@@ -18,10 +18,8 @@
 
 typedef struct ProbeRecord {
   unsigned int head, index, sync;
-  unsigned int option_size, scale_y;
-  unsigned int frame_buf_size, capture_frame_buf_size;
-  unsigned int has_frame_buf, frame_buf_size_field;
-  unsigned int base, pitch, pixelformat, width, height, flags;
+  unsigned int source_size, capture_size;
+  unsigned int has_source, base, pitch, pixelformat, width, height, flags;
 } ProbeRecord;
 
 static tai_hook_ref_t g_hook_ref;
@@ -46,25 +44,27 @@ static int compat_set_framebuf_hook(
     r->index = (unsigned int)index;
     r->sync = (unsigned int)sync;
     if (source_param != NULL && ((uintptr_t)source_param & 3u) == 0u) {
-      const SceDisplayFrameBufForCompat *fb =
-          (const SceDisplayFrameBufForCompat *)source_param;
+      const SceDisplayFrameBuf *fb = (const SceDisplayFrameBuf *)source_param;
       const unsigned int source_size = *(const unsigned int *)source_param;
-      r->option_size = source_size;
-      r->frame_buf_size = source_size;
-      if (source_size == sizeof(SceDisplayFrameBufForCompat) &&
-          fb->size == sizeof(SceDisplayFrameBufForCompat)) {
-        r->has_frame_buf = 1;
-        r->frame_buf_size_field = fb->size;
+      r->source_size = source_size;
+      if (source_size >= sizeof(SceDisplayFrameBuf) &&
+          source_size <= sizeof(SceDisplayFrameBufForCompat) &&
+          fb->size == source_size) {
+        r->has_source = 1;
         r->base = (unsigned int)(uintptr_t)fb->base;
         r->pitch = fb->pitch;
         r->pixelformat = fb->pixelformat;
         r->width = fb->width;
         r->height = fb->height;
-        r->flags = fb->flags;
+        if (source_size >= sizeof(SceDisplayFrameBufForCompat)) {
+          const SceDisplayFrameBufForCompat *compat_fb =
+              (const SceDisplayFrameBufForCompat *)source_param;
+          r->flags = compat_fb->flags;
+        }
       }
     }
     if (capture_param != NULL && ((uintptr_t)capture_param & 3u) == 0u)
-      r->capture_frame_buf_size = *(const unsigned int *)capture_param;
+      r->capture_size = *(const unsigned int *)capture_param;
     g_record_count++;
   }
 
@@ -88,14 +88,12 @@ static void write_report(void) {
     const ProbeRecord *r = &g_records[i];
     used += snprintf(report + used, sizeof(report) - used,
                      "Call %u\n head=%u index=%u sync=%u\n"
-                     "opt_size=0x%X scale_y=0x%X\n"
-                     "frame_buf_size=0x%X capture_size=0x%X\n"
-                     "has_frame_buf=%u fb_size=0x%X base=0x%08X\n"
+                     "source_size=0x%X capture_size=0x%X\n"
+                     "has_source=%u base=0x%08X\n"
                      "pitch=%u format=0x%08X width=%u height=%u flags=0x%08X\n\n",
                      i, r->head, r->index, r->sync,
-                     r->option_size, r->scale_y,
-                     r->frame_buf_size, r->capture_frame_buf_size,
-                     r->has_frame_buf, r->frame_buf_size_field, r->base,
+                     r->source_size, r->capture_size,
+                     r->has_source, r->base,
                      r->pitch, r->pixelformat, r->width, r->height, r->flags);
   }
 
