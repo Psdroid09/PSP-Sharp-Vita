@@ -47,6 +47,7 @@ Consulta los README de cada carpeta para instrucciones y limitaciones.
 - [Alcance del plugin PSPemu](research/PSPEMU_PLUGIN_SCOPE.md)
 - [Auditoría de referencias](research/REFERENCE_AUDIT.md)
 - [Prototipo de diagnóstico](src/diagnostic/README.md)
+- [Plan de validación en hardware (solo lectura)](research/HARDWARE_VALIDATION_PLAN.md)
 
 El import candidato es `SceDisplaySetFrameBufForCompat`. El wrapper de firmware mapea el framebuffer de origen al quinto argumento y el destino opcional de conversión al sexto. El prototipo llama primero a la función original y solo inspecciona metadatos del descriptor de origen tras una llamada exitosa. No lee el área de píxeles ni modifica argumentos.
 
