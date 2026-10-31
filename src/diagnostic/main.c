@@ -41,7 +41,7 @@ typedef char ProbeFrameBufCompatSizeCheck[(sizeof(ProbeFrameBufCompat) == 0x1C) 
 typedef struct ProbeRecord {
   unsigned int head, index, sync;
   unsigned int source_size, capture_present;
-  unsigned int descriptor_valid, base, pitch, pixelformat, width, height, flags;
+  unsigned int metadata_sanity, base, pitch, pixelformat, width, height, flags;
 } ProbeRecord;
 
 static tai_hook_ref_t g_hook_ref;
