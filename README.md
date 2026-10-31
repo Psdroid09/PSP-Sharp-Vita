@@ -16,7 +16,7 @@ Investigar una solución de nitidez que conserve los detalles de la imagen y que
 
 ## Estado
 
-**Investigación técnica en curso.** Ya existe un prototipo de diagnóstico nativo que compila con VitaSDK en GitHub Actions. El prototipo solo observa metadatos de una llamada de presentación de PSPemu; no aplica filtros y no ha sido probado en hardware.
+**Investigación técnica en curso.** Ya existe un prototipo de diagnóstico nativo que compila con VitaSDK en GitHub Actions (última compilación aprobada: commit `2a92502`). El prototipo solo observa metadatos de una llamada de presentación de PSPemu; no aplica filtros y no ha sido probado en hardware.
 
 La auditoría de referencias sigue sin encontrar una solución que demuestre un filtro personalizado seguro para burbujas Chovy-Sign. Consulta `research/TECHNICAL_FEASIBILITY.md`, `research/REFERENCE_AUDIT.md` y `research/PSPEMU_PLUGIN_SCOPE.md`.
 
