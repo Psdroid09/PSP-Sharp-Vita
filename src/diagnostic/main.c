@@ -1,6 +1,6 @@
 /*
  * PSP-Sharp-Vita: read-only PSPemu compatibility framebuffer probe.
- * Diagnostic source only: no pixel memory access or display mutation.
+ * Diagnostic only: no pixel memory access or display mutation.
  * Target: Vita firmware 3.60; user plugin loaded from *ALL.
  */
 #include <vitasdk.h>
@@ -40,61 +40,89 @@ typedef char ProbeFrameBufCompatSizeCheck[(sizeof(ProbeFrameBufCompat) == 0x1C) 
 
 typedef struct ProbeRecord {
   unsigned int head, index, sync;
-  unsigned int source_size, capture_size;
-  unsigned int has_source, base, pitch, pixelformat, width, height, flags;
+  unsigned int source_size, capture_present;
+  unsigned int descriptor_valid, base, pitch, pixelformat, width, height, flags;
 } ProbeRecord;
 
 static tai_hook_ref_t g_hook_ref;
 static SceUID g_hook_id = -1;
 static ProbeRecord g_records[MAX_RECORDS];
-static unsigned int g_record_count;
-static unsigned int g_null_source_calls;
+static volatile unsigned int g_record_count;
+static volatile unsigned int g_nonnull_calls;
+static volatile unsigned int g_null_source_calls;
+static volatile unsigned int g_invalid_descriptors;
 
+/*
+ * The original firmware wrapper reads/copies the sized descriptors before
+ * returning. Observe the source descriptor only AFTER a successful original
+ * call, so this probe does not dereference an argument the wrapper rejected.
+ * The caller-owned descriptor is still assumed to remain valid for the
+ * duration of this hook invocation; no pixel pointer is ever dereferenced.
+ */
 static int compat_set_framebuf_hook(
     int head, int index,
     const void *arg3, int sync,
     const void *source_param, const void *capture_param) {
-  (void)arg3;
+  int ret = TAI_CONTINUE(int, g_hook_ref,
+                         head, index, arg3, sync, source_param, capture_param);
 
-  /*
-   * Firmware's six-argument SceDisplayUser wrapper passes source_param and
-   * capture_param separately. Do not interpret arg3 as an options structure.
-   */
   if (source_param == NULL) {
-    g_null_source_calls++;
-  } else if (g_record_count < MAX_RECORDS) {
-    ProbeRecord *r = &g_records[g_record_count];
-    memset(r, 0, sizeof(*r));
-    r->head = (unsigned int)head;
-    r->index = (unsigned int)index;
-    r->sync = (unsigned int)sync;
-    if (source_param != NULL && ((uintptr_t)source_param & 3u) == 0u) {
-      const ProbeFrameBuf *fb = (const ProbeFrameBuf *)source_param;
-      const unsigned int source_size = *(const unsigned int *)source_param;
-      r->source_size = source_size;
-      if (source_size >= sizeof(ProbeFrameBuf) &&
-          source_size <= sizeof(ProbeFrameBufCompat) &&
-          fb->size == source_size) {
-        r->has_source = 1;
-        r->base = (unsigned int)(uintptr_t)fb->base;
-        r->pitch = fb->pitch;
-        r->pixelformat = fb->pixelformat;
-        r->width = fb->width;
-        r->height = fb->height;
-        if (source_size >= sizeof(ProbeFrameBufCompat)) {
-          const ProbeFrameBufCompat *compat_fb =
-              (const ProbeFrameBufCompat *)source_param;
-          r->flags = compat_fb->flags;
-        }
-      }
-    }
-    if (capture_param != NULL && ((uintptr_t)capture_param & 3u) == 0u)
-      r->capture_size = *(const unsigned int *)capture_param;
-    g_record_count++;
+    __sync_fetch_and_add(&g_null_source_calls, 1);
+    return ret;
   }
 
-  return TAI_CONTINUE(int, g_hook_ref,
-                      head, index, arg3, sync, source_param, capture_param);
+  __sync_fetch_and_add(&g_nonnull_calls, 1);
+
+  if (ret >= 0) {
+    const ProbeFrameBuf *fb;
+    unsigned int source_size;
+    unsigned int slot;
+
+    if (((uintptr_t)source_param & 3u) != 0u) {
+      __sync_fetch_and_add(&g_invalid_descriptors, 1);
+      return ret;
+    }
+
+    source_size = *(const unsigned int *)source_param;
+    if (source_size != sizeof(ProbeFrameBuf) &&
+        source_size != sizeof(ProbeFrameBufCompat)) {
+      __sync_fetch_and_add(&g_invalid_descriptors, 1);
+      return ret;
+    }
+
+    fb = (const ProbeFrameBuf *)source_param;
+    if (fb->size != source_size) {
+      __sync_fetch_and_add(&g_invalid_descriptors, 1);
+      return ret;
+    }
+
+    slot = __sync_fetch_and_add(&g_record_count, 1);
+    if (slot < MAX_RECORDS) {
+      ProbeRecord *r = &g_records[slot];
+      memset(r, 0, sizeof(*r));
+      r->head = (unsigned int)head;
+      r->index = (unsigned int)index;
+      r->sync = (unsigned int)sync;
+      r->source_size = source_size;
+      r->capture_present = (capture_param != NULL);
+      r->base = (unsigned int)(uintptr_t)fb->base;
+      r->pitch = fb->pitch;
+      r->pixelformat = fb->pixelformat;
+      r->width = fb->width;
+      r->height = fb->height;
+      if (source_size == sizeof(ProbeFrameBufCompat)) {
+        const ProbeFrameBufCompat *ext =
+            (const ProbeFrameBufCompat *)source_param;
+        r->flags = ext->flags;
+      }
+      r->descriptor_valid =
+          (fb->base != NULL && fb->width > 0 && fb->height > 0 &&
+           fb->pitch >= fb->width);
+      __sync_synchronize();
+    }
+  }
+
+  return ret;
 }
 
 static void write_report(void) {
@@ -102,24 +130,32 @@ static void write_report(void) {
   int used = 0;
   SceUID fd;
   unsigned int i;
+  unsigned int records = g_record_count;
+
+  if (records > MAX_RECORDS)
+    records = MAX_RECORDS;
 
   used += snprintf(report + used, sizeof(report) - used,
                    "PSP-Sharp-Vita read-only probe\n"
-                   "Non-NULL source records captured: %u\n"
+                   "Successful non-NULL source calls: %u\n"
                    "Calls with NULL source: %u\n"
+                   "Invalid/unrecognized descriptors: %u\n"
+                   "Metadata records retained: %u\n"
                    "No pixel memory was read or modified.\n\n",
-                   g_record_count, g_null_source_calls);
+                   (unsigned int)g_nonnull_calls,
+                   (unsigned int)g_null_source_calls,
+                   (unsigned int)g_invalid_descriptors, records);
 
-  for (i = 0; i < g_record_count && used < (int)sizeof(report); i++) {
+  for (i = 0; i < records && used < (int)sizeof(report); i++) {
     const ProbeRecord *r = &g_records[i];
     used += snprintf(report + used, sizeof(report) - used,
                      "Call %u\n head=%u index=%u sync=%u\n"
-                     "source_size=0x%X capture_size=0x%X\n"
-                     "has_source=%u base=0x%08X\n"
+                     "source_size=0x%X capture_present=%u\n"
+                     "descriptor_valid=%u base=0x%08X\n"
                      "pitch=%u format=0x%08X width=%u height=%u flags=0x%08X\n\n",
                      i, r->head, r->index, r->sync,
-                     r->source_size, r->capture_size,
-                     r->has_source, r->base,
+                     r->source_size, r->capture_present,
+                     r->descriptor_valid, r->base,
                      r->pitch, r->pixelformat, r->width, r->height, r->flags);
   }
 
@@ -146,7 +182,7 @@ int module_start(SceSize args, void *argp) {
   if (taiGetModuleInfo("ScePspemu", &info) < 0)
     return SCE_KERNEL_START_NO_RESIDENT;
 
-  /* This first probe is deliberately restricted to 3.60 retail PSPemu. */
+  /* Restrict this diagnostic build to the 3.60 retail PSPemu module. */
   if (info.module_nid != 0x2714F07D)
     return SCE_KERNEL_START_NO_RESIDENT;
 
