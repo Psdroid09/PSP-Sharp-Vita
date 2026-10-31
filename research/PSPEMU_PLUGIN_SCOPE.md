@@ -240,6 +240,6 @@ The first diagnostic build completed successfully in GitHub Actions using VitaSD
 5. Use atomic slot/counter increments and retain no more than eight completed metadata records.
 6. Keep file output outside the frame callback, once at module unload.
 
-This is a risk reduction, not a complete memory-safety proof: the source descriptor is caller-owned and the hook still assumes that it remains readable until the hook returns. The build must be rerun for this hardened revision, and its binary must be inspected before any hardware test.
+This is a risk reduction, not a complete memory-safety proof: the source descriptor is caller-owned and the hook still assumes that it remains readable until the hook returns. The hardened revision at commit `c7bc3c2` passed the VitaSDK CI build. Its artifact was downloaded; the archive contained a 5,727-byte `PSPSharpProbe.suprx` with an `SCE\0` SELF header. This confirms a Vita SELF-format output, not runtime correctness or hardware safety.
 
 **Current decision remains NO INSTALL.** A successful compile cannot establish that the import is called by ordinary PSP game sessions, that the descriptor's pixel address is CPU-accessible, or that any pixel processing can be synchronized safely. No user console configuration, installed plugin, or SD2Vita content has been changed.
