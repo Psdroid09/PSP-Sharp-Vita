@@ -6,7 +6,7 @@
 
 ## Conclusión ejecutiva
 
-La nitidez adicional es una meta técnicamente plausible, pero todavía **no existe una ruta de implementación demostrada para las burbujas Chovy-Sign**. No se debe compilar ni instalar un plugin experimental en la Vita principal en esta etapa.
+La nitidez adicional sigue siendo una meta experimental. Se ha identificado un import PSPemu-only que permite observar metadatos del framebuffer, pero todavía no existe una ruta de filtrado demostrada para las burbujas Chovy-Sign. No instalar un plugin experimental en la Vita principal en esta etapa.
 
 La distinción fundamental es el entorno de ejecución:
 
@@ -73,9 +73,9 @@ Fuentes:
 ## Plan de trabajo seguro
 
 1. Identificar cómo PSPemu stock presenta el framebuffer en Vita y qué APIs/exports intervienen.
-2. Determinar si existe una interfaz documentada y segura para observar el framebuffer sin modificarlo.
-3. Diseñar una prueba offline con imágenes sintéticas para comparar nearest-neighbour, sharp-bilinear y unsharp mask, midiendo halos y pérdida de detalle.
-4. Solo si se identifica un punto de integración viable, preparar un prototipo que pueda desactivarse sin tocar datos de juegos ni sustituir módulos del sistema.
+2. Validar el import `SceDisplaySetFrameBufForCompat` mediante un plugin de diagnóstico de solo lectura; el framebuffer de origen corresponde al quinto argumento del wrapper.
+3. Diseñar una prueba offline con imágenes sintéticas para comparar nearest-neighbour, bilinear, sharp-bilinear y unsharp mask, midiendo halos y pérdida de detalle.
+4. Si el descriptor resulta válido, estudiar primero el flag bilinear documentado; no leer ni modificar píxeles hasta verificar ownership, sincronización y coste por frame.
 5. Validar primero en un entorno de pruebas y con una Vita secundaria; no usar la consola principal como banco de pruebas.
 
 ## Criterios de aceptación
