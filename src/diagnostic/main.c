@@ -16,6 +16,28 @@
 #define MAX_RECORDS 8
 #define REPORT_PATH "ux0:data/PSPSharp_compat_probe.txt"
 
+typedef struct ProbeFrameBuf {
+  SceSize size;
+  void *base;
+  unsigned int pitch;
+  unsigned int pixelformat;
+  unsigned int width;
+  unsigned int height;
+} ProbeFrameBuf;
+
+typedef struct ProbeFrameBufCompat {
+  SceSize size;
+  void *base;
+  unsigned int pitch;
+  unsigned int pixelformat;
+  unsigned int width;
+  unsigned int height;
+  SceUInt32 flags;
+} ProbeFrameBufCompat;
+
+typedef char ProbeFrameBufSizeCheck[(sizeof(ProbeFrameBuf) == 0x18) ? 1 : -1];
+typedef char ProbeFrameBufCompatSizeCheck[(sizeof(ProbeFrameBufCompat) == 0x1C) ? 1 : -1];
+
 typedef struct ProbeRecord {
   unsigned int head, index, sync;
   unsigned int source_size, capture_size;
@@ -47,11 +69,11 @@ static int compat_set_framebuf_hook(
     r->index = (unsigned int)index;
     r->sync = (unsigned int)sync;
     if (source_param != NULL && ((uintptr_t)source_param & 3u) == 0u) {
-      const SceDisplayFrameBuf *fb = (const SceDisplayFrameBuf *)source_param;
+      const ProbeFrameBuf *fb = (const ProbeFrameBuf *)source_param;
       const unsigned int source_size = *(const unsigned int *)source_param;
       r->source_size = source_size;
-      if (source_size >= sizeof(SceDisplayFrameBuf) &&
-          source_size <= sizeof(SceDisplayFrameBufForCompat) &&
+      if (source_size >= sizeof(ProbeFrameBuf) &&
+          source_size <= sizeof(ProbeFrameBufCompat) &&
           fb->size == source_size) {
         r->has_source = 1;
         r->base = (unsigned int)(uintptr_t)fb->base;
@@ -59,9 +81,9 @@ static int compat_set_framebuf_hook(
         r->pixelformat = fb->pixelformat;
         r->width = fb->width;
         r->height = fb->height;
-        if (source_size >= sizeof(SceDisplayFrameBufForCompat)) {
-          const SceDisplayFrameBufForCompat *compat_fb =
-              (const SceDisplayFrameBufForCompat *)source_param;
+        if (source_size >= sizeof(ProbeFrameBufCompat)) {
+          const ProbeFrameBufCompat *compat_fb =
+              (const ProbeFrameBufCompat *)source_param;
           r->flags = compat_fb->flags;
         }
       }
