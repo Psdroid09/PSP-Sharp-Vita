@@ -227,3 +227,19 @@ Primary source:
 Adrenaline's six-argument hook is consistent with the wrapper ABI. Its final argument is the optional conversion/capture destination; replacing that argument when NULL is a POPS-specific path. This does not mean the sixth argument is the PSP source framebuffer.
 
 The diagnostic prototype has been corrected to observe arg5 as the source descriptor and arg6 only as the optional conversion destination. It does not dereference arg3. It remains uncompiled and untested.
+
+
+## Source hardening review — 31 October 2026
+
+The first diagnostic build completed successfully in GitHub Actions using VitaSDK. A subsequent review identified a weakness in the first source version: it dereferenced the caller-provided descriptor before invoking the firmware wrapper. The follow-up branch changes the order:
+
+1. Call the original six-argument firmware function exactly once and preserve its return value.
+2. Only if the original call succeeds, inspect the fifth argument's descriptor metadata.
+3. Accept only exact descriptor sizes 0x18 and 0x1C; reject other sizes and unaligned pointers.
+4. Never dereference the framebuffer `base` pointer or the optional sixth-argument destination.
+5. Use atomic slot/counter increments and retain no more than eight completed metadata records.
+6. Keep file output outside the frame callback, once at module unload.
+
+This is a risk reduction, not a complete memory-safety proof: the source descriptor is caller-owned and the hook still assumes that it remains readable until the hook returns. The build must be rerun for this hardened revision, and its binary must be inspected before any hardware test.
+
+**Current decision remains NO INSTALL.** A successful compile cannot establish that the import is called by ordinary PSP game sessions, that the descriptor's pixel address is CPU-accessible, or that any pixel processing can be synchronized safely. No user console configuration, installed plugin, or SD2Vita content has been changed.
