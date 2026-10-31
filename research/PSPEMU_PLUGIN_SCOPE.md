@@ -123,3 +123,30 @@ This experiment would reveal whether the import exposes a useful PSP image surfa
 ### Firmware-specific evidence
 
 Adrenaline checks `module_nid == 0x2714F07D` as the 3.60 retail ScePspemu build before applying several internal-offset hooks. Its `sceDisplaySetFrameBufForCompat` import hook is installed before that conditional, so the source demonstrates the import hook's use in the PSPemu process; still verify the exact import resolution on the user's 3.60 retail firmware before compiling a diagnostic.
+
+## Follow-up audit: display descriptor semantics (Vita SDK headers)
+
+The Vita SDK header defines the SceDisplayFrameBuf structure as exactly 0x18 bytes:
+
+- size
+- base (framebuffer pointer)
+- pitch (in pixels)
+- pixelformat
+- width
+- height
+
+Source: https://github.com/vitasdk/vita-headers/blob/e66ebe90b73d1fa4cce005a5b2072cec27322544/include/psp2common/display.h
+
+The same header documents an extended 0x1C-byte descriptor, SceDisplayFrameBufExt, accepted by firmware 3.60. Its additional flags field includes SCE_DISPLAY_FRAMEBUF_FLAG_BILINEAR (0x00100000) and SCE_DISPLAY_FRAMEBUF_FLAG_SHARED (0x00040000). It also says that when the 0x18-byte descriptor is used, the display driver sets the bilinear flag internally.
+
+### Interpretation and limits
+
+This is useful evidence about the Vita display driver's framebuffer descriptor and a possible built-in bilinear presentation mode. It is not proof that the PSPemu compat import exposes a writable game-render target, nor that changing its descriptor flags from a plugin is safe or even honored by that compatibility API.
+
+The proposed diagnostic hook should therefore copy only the six documented fields from a non-NULL pParam after validating pParam->size is at least the known descriptor size. It must not dereference base, modify flags, substitute a buffer, or call display APIs recursively. The pointer may describe a surface being handed to the display subsystem rather than a stable PSP source texture.
+
+### Revised decision on the Adrenaline lead
+
+The sceDisplaySetFrameBufForCompat import remains a read-only observation candidate, not an implementation route. Adrenaline's patch only changes the NULL case and supplies a POPS buffer; its code does not show a PSP-game-specific pixel filter. The next experiment must first establish whether ordinary PSP game sessions call this import with a non-NULL descriptor and whether the reported dimensions/format match the expected PSP frame. If no useful calls are observed, stop pursuing this hook rather than forcing a patch.
+
+No filter, memory write, descriptor mutation, kernel patch, or console configuration change is authorized by this research stage.
