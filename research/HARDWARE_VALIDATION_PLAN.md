@@ -31,6 +31,11 @@ Determine whether stock PSPemu invokes the hooked compatibility-framebuffer impo
 - Keep the test entry separate from all existing plugin lines. Do not reorder, remove, or replace existing plugins.
 - If process identity cannot be confirmed, stop; do not trial-and-error taiHEN sections.
 
+
+### Process scope note
+
+Chovy-Sign's PSP builder uses the UMD disc ID as its PSP output folder (`LibChovy/PspParameters.cs` returns `Umd.DiscId` as `OutputFolder`). Therefore do **not** assume every Chovy-Sign bubble is the generic `NPXS10028` title. The game bubble's own title/disc ID must be identified for a title-scoped taiHEN entry. The module name `ScePspemu` and the app title ID are separate identifiers; confirm the actual process context before selecting a taiHEN section. If this cannot be established, stop rather than falling back to `*ALL`.
+
 ### Stage 2 — one read-only run
 
 - Start one disposable PSP game.
