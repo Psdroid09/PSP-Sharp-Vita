@@ -89,3 +89,27 @@ Referencias:
 **Corrección importante:** el último argumento observado por el hook de Adrenaline no es el framebuffer de origen; corresponde a uno de los parámetros opcionales de captura. El origen está anidado en el tercer argumento. La documentación de `research/PSPEMU_PLUGIN_SCOPE.md` contiene la auditoría completa y el plan de prueba actualizado.
 
 **Estado:** punto de observación prometedor, no todavía una ruta de modificación segura. No leer ni escribir píxeles hasta verificar que el descriptor es válido, que la memoria es accesible, que PSPemu terminó de renderizar y que el buffer no está siendo leído por DMA/scanout.
+
+
+## Critical correction: wrapper argument mapping
+
+A source-level audit of the firmware wrapper and kernel syscall corrected the earlier assumption that the third hook argument points to an options block.
+
+The hooked SceDisplayUser import at library NID 0x4FAACD11 / function NID 0x8C36B628 is the six-argument user wrapper:
+- arg1: head
+- arg2: index
+- arg3: compatibility crop-width parameter (do not dereference it as an options structure)
+- arg4: sync
+- arg5: optional source framebuffer pointer (the wrapper passes this as the kernel syscall's pParam)
+- arg6: optional conversion/capture destination pointer (the wrapper passes this as convDst)
+
+The wrapper reads the size field from arguments 5 and 6 and forwards both pointers and sizes through its syscall argument block. The kernel implementation then copies arg5 into a local source framebuffer descriptor and arg6 into a separate conversion destination descriptor. The source descriptor is therefore the fifth argument, not the third or sixth.
+
+Primary source:
+- User wrapper: https://github.com/shoui520/psp2/blob/0261b5803d8108135d6cd8dc8660834d865b4e24/sys/internal/usermode/src/driver_us/display.c
+- Kernel syscall copy/argument mapping: https://github.com/shoui520/psp2/blob/0261b5803d8108135d6cd8dc8660834d865b4e24/sys/internal/driver/src/display/display_syscall.c
+- VitaSDK compat descriptor: https://github.com/vitasdk/vita-headers/blob/e66ebe90b73d1fa4cce005a5b2072cec27322544/include/psp2/display.h
+
+Adrenaline's six-argument hook is consistent with the wrapper ABI. Its final argument is the optional conversion/capture destination; replacing that argument when NULL is a POPS-specific path. This does not mean the sixth argument is the PSP source framebuffer.
+
+The diagnostic prototype has been corrected to observe arg5 as the source descriptor and arg6 only as the optional conversion destination. It does not dereference arg3. It remains uncompiled and untested.
