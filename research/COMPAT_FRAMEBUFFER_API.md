@@ -72,3 +72,20 @@ El código de compat.c permite precisar el comportamiento de dos funciones:
 Esto aclara que SceCompatFrameBufferInit registra un bloque de memoria para el subsistema de salida LCDDMA. No es una API genérica de captura ni un getter del framebuffer interno del PSPemu. La ruta puede estar relacionada con la salida de compatibilidad/TV, pero la fuente revisada no basta para afirmar que sea el frame usado por una burbuja Chovy-Sign en la pantalla integrada.
 
 **Impacto en la decisión:** la implementación interna refuerza que SceCompat no ofrece el acceso simple que necesitamos. No usar esta API como atajo para inyectar un filtro; primero habría que identificar quién registra el memblock, en qué escenarios se activa LCDDMA y si ese bloque coincide con la superficie real que queremos procesar.
+
+## Hallazgo de mayor precisión: SceDisplaySetFrameBufForCompat
+
+Se inspeccionó el wrapper de firmware 3.60 y su export table. La función `sceDisplaySetFrameBufForCompat` está exportada por SceDisplayUser y el código fuente del firmware indica que solo está disponible para un proceso emulador PSP.
+
+Su firma de wrapper tiene seis argumentos. El tercer argumento es un bloque de opciones `SceDisplaySetFrameBufForCompatOpt` (0x18 bytes). Ese bloque contiene un puntero `frame_buf` a `SceDisplayFrameBufForCompat` (0x1C bytes), que describe el framebuffer de origen con base, pitch en píxeles, formato, ancho, alto y flags. Un campo distinto `capture_frame_buf` describe un destino opcional de captura.
+
+Esto es más específico que `sceDisplayGetFrameBuf`, que consulta la salida Vita, y que las APIs SceCompat de asignación/sincronización. La función compat está documentada en el código del firmware como disponible únicamente para procesos emuladores PSP, por lo que su import en ScePspemu es un candidato acotado para observar el frame enviado al subsistema de presentación.
+
+Referencias:
+- Firmware wrapper: https://github.com/shoui520/psp2/blob/0261b5803d8108135d6cd8dc8660834d865b4e24/sys/internal/usermode/src/driver_us/display.c
+- Export table y restricción de proceso: https://github.com/shoui520/psp2/blob/0261b5803d8108135d6cd8dc8660834d865b4e24/sys/internal/usermode/src/driver_us/exports.yml
+- Estructuras SDK: https://github.com/vitasdk/vita-headers/blob/e66ebe90b73d1fa4cce005a5b2072cec27322544/include/psp2/display.h
+
+**Corrección importante:** el último argumento observado por el hook de Adrenaline no es el framebuffer de origen; corresponde a uno de los parámetros opcionales de captura. El origen está anidado en el tercer argumento. La documentación de `research/PSPEMU_PLUGIN_SCOPE.md` contiene la auditoría completa y el plan de prueba actualizado.
+
+**Estado:** punto de observación prometedor, no todavía una ruta de modificación segura. No leer ni escribir píxeles hasta verificar que el descriptor es válido, que la memoria es accesible, que PSPemu terminó de renderizar y que el buffer no está siendo leído por DMA/scanout.
