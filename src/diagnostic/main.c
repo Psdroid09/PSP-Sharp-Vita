@@ -31,44 +31,45 @@ static unsigned int g_record_count;
 
 static int compat_set_framebuf_hook(
     int head, int index,
-    const SceDisplaySetFrameBufForCompatOpt *opt,
-    int sync, const void *param2, const void *param3) {
-  (void)param2;
-  (void)param3;
+    const void *arg3, int sync,
+    const void *source_param, const void *capture_param) {
+  (void)arg3;
 
-  /* Capture only the first eight valid option blocks; never touch pixels. */
-  if (g_record_count < MAX_RECORDS &&
-      opt != NULL && ((uintptr_t)opt & 3u) == 0u &&
-      opt->size == sizeof(SceDisplaySetFrameBufForCompatOpt)) {
+  /*
+   * Firmware's six-argument SceDisplayUser wrapper passes source_param and
+   * capture_param separately. Do not interpret arg3 as an options structure.
+   */
+  if (g_record_count < MAX_RECORDS) {
     ProbeRecord *r = &g_records[g_record_count];
     memset(r, 0, sizeof(*r));
     r->head = (unsigned int)head;
     r->index = (unsigned int)index;
     r->sync = (unsigned int)sync;
-    r->option_size = opt->size;
-    r->scale_y = opt->scale_y;
-    r->frame_buf_size = opt->frame_buf_size;
-    r->capture_frame_buf_size = opt->capture_frame_buf_size;
-
-    if (opt->frame_buf != NULL &&
-        ((uintptr_t)opt->frame_buf & 3u) == 0u &&
-        opt->frame_buf_size == sizeof(SceDisplayFrameBufForCompat) &&
-        opt->frame_buf->size == sizeof(SceDisplayFrameBufForCompat)) {
-      const SceDisplayFrameBufForCompat *fb = opt->frame_buf;
-      r->has_frame_buf = 1;
-      r->frame_buf_size_field = fb->size;
-      r->base = (unsigned int)(uintptr_t)fb->base;
-      r->pitch = fb->pitch;
-      r->pixelformat = fb->pixelformat;
-      r->width = fb->width;
-      r->height = fb->height;
-      r->flags = fb->flags;
+    if (source_param != NULL && ((uintptr_t)source_param & 3u) == 0u) {
+      const SceDisplayFrameBufForCompat *fb =
+          (const SceDisplayFrameBufForCompat *)source_param;
+      const unsigned int source_size = *(const unsigned int *)source_param;
+      r->option_size = source_size;
+      r->frame_buf_size = source_size;
+      if (source_size == sizeof(SceDisplayFrameBufForCompat) &&
+          fb->size == sizeof(SceDisplayFrameBufForCompat)) {
+        r->has_frame_buf = 1;
+        r->frame_buf_size_field = fb->size;
+        r->base = (unsigned int)(uintptr_t)fb->base;
+        r->pitch = fb->pitch;
+        r->pixelformat = fb->pixelformat;
+        r->width = fb->width;
+        r->height = fb->height;
+        r->flags = fb->flags;
+      }
     }
+    if (capture_param != NULL && ((uintptr_t)capture_param & 3u) == 0u)
+      r->capture_frame_buf_size = *(const unsigned int *)capture_param;
     g_record_count++;
   }
 
   return TAI_CONTINUE(int, g_hook_ref,
-                      head, index, opt, sync, param2, param3);
+                      head, index, arg3, sync, source_param, capture_param);
 }
 
 static void write_report(void) {
