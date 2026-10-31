@@ -185,13 +185,11 @@ The firmware 3.60 implementation of sceDisplaySetFrameBufForCompat has the six-a
 - arg1: display head
 - arg2: framebuffer index
 - arg3: crop-width argument; do not dereference it
+- arg4: sync mode
 - arg5: optional source framebuffer pointer (`pParam`)
 - arg6: optional conversion/capture destination (`convDst`)
-- arg4: sync mode
-- arg5: optional sized parameter
-- arg6: optional sized parameter
 
-The options block is 0x18 bytes and contains scale_y, frame_buf, capture_frame_buf, frame_buf_size, capture_frame_buf_size, and reserved. The actual source descriptor is nested in options.frame_buf and has type SceDisplayFrameBufForCompat (0x1C bytes), with base, pixel pitch, pixel format, dimensions, and flags. The optional capture destination is separate.
+The source descriptor is passed directly through arg5, and the optional conversion destination is passed separately through arg6. The wrapper reads the size field at the start of each descriptor and forwards the pointer and size to the kernel syscall. The source descriptor may be 0x18 or 0x1C bytes; the diagnostic checks both sizes.
 
 The firmware wrapper packages the fifth and sixth arguments and their size fields into the syscall argument block. Its source comments explicitly state that the export is available only to a PSP emulator process.
 
