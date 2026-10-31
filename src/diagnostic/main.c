@@ -26,6 +26,7 @@ static tai_hook_ref_t g_hook_ref;
 static SceUID g_hook_id = -1;
 static ProbeRecord g_records[MAX_RECORDS];
 static unsigned int g_record_count;
+static unsigned int g_null_source_calls;
 
 static int compat_set_framebuf_hook(
     int head, int index,
@@ -37,7 +38,9 @@ static int compat_set_framebuf_hook(
    * Firmware's six-argument SceDisplayUser wrapper passes source_param and
    * capture_param separately. Do not interpret arg3 as an options structure.
    */
-  if (g_record_count < MAX_RECORDS) {
+  if (source_param == NULL) {
+    g_null_source_calls++;
+  } else if (g_record_count < MAX_RECORDS) {
     ProbeRecord *r = &g_records[g_record_count];
     memset(r, 0, sizeof(*r));
     r->head = (unsigned int)head;
@@ -80,9 +83,10 @@ static void write_report(void) {
 
   used += snprintf(report + used, sizeof(report) - used,
                    "PSP-Sharp-Vita read-only probe\n"
-                   "Records captured: %u\n"
+                   "Non-NULL source records captured: %u\n"
+                   "Calls with NULL source: %u\n"
                    "No pixel memory was read or modified.\n\n",
-                   g_record_count);
+                   g_record_count, g_null_source_calls);
 
   for (i = 0; i < g_record_count && used < (int)sizeof(report); i++) {
     const ProbeRecord *r = &g_records[i];
