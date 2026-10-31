@@ -97,7 +97,7 @@ static int compat_set_framebuf_hook(
       return ret;
     }
 
-    slot = __sync_fetch_and_add(&g_record_count, 1);
+    slot = __sync_fetch_and_add(&g_record_slots, 1);
     if (slot < MAX_RECORDS) {
       ProbeRecord *r = &g_records[slot];
       memset(r, 0, sizeof(*r));
