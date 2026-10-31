@@ -30,8 +30,8 @@ Expected output: `PSPSharpProbe.suprx`.
 
 ## Validation status
 
-- **CI build passed** for the initial diagnostic source at commit `bf5048e`; artifact `PSPSharpProbe-suprx` was uploaded.
-- A follow-up source-hardening change is being built separately; the earlier artifact does not contain those changes.
+- **CI build passed** for the hardened source at commit `2a92502`; artifact `PSPSharpProbe-suprx` (5,728 bytes) was downloaded and inspected. Its first four bytes are `SCE\\0`, and SHA-256 is `5cd68dcb950456a8fd0b8f76ab167e37810678773b1e332d5a08bedbb0c52a72`.
+- The final source revision renames the limited metadata check to `metadata_sanity`; this is not proof that the buffer is valid, mapped, or safe to modify.
 - No test has been performed on a physical Vita.
 - No evidence yet proves that PSP game sessions submit a non-NULL descriptor, that its base is CPU-readable, or that a filter can run without racing GPU/display access.
 
