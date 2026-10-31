@@ -77,4 +77,4 @@ Nueva auditoría de carga de plugins por proceso, identidad `NPXS10028`/`ScePspe
 
 ## Prototipo de diagnóstico (solo código fuente)
 
-Se añadió `src/diagnostic/` con un plugin PSPemu-only de observación: verifica PSPemu 3.60 retail, intercepta el import de compatibilidad y registra hasta ocho descriptores sin leer ni modificar píxeles. El informe se escribe una sola vez al salir del proceso. **El código aún no está compilado ni probado; no instalarlo ni añadirlo a `config.txt`.** Consulta [src/diagnostic/README.md](src/diagnostic/README.md).
+Se añadió `src/diagnostic/` con un plugin PSPemu-only de observación: verifica PSPemu 3.60 retail, intercepta el import de compatibilidad y registra hasta ocho descriptores de origen recibidos en el quinto argumento, sin leer ni modificar píxeles. El informe se escribe una sola vez al salir del proceso. También se añadió un workflow de GitHub Actions para compilarlo con VitaSDK. **El código aún no está compilado ni probado; no instalarlo ni añadirlo a `config.txt`.** Consulta [src/diagnostic/README.md](src/diagnostic/README.md) y [build-diagnostic.yml](.github/workflows/build-diagnostic.yml).
