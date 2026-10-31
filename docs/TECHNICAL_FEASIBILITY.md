@@ -136,3 +136,8 @@ No se debe cambiar ese bit todavía. Primero hay que observar varios juegos y es
 5. Si el flag ya está activo o no cambia la imagen, detener esa vía y continuar solo si aparece un punto de postproceso verificable.
 
 **Estado:** se ha encontrado una interfaz PSPemu-only con descriptor de origen y un flag bilinear documentado. Sigue siendo una hipótesis de integración; no hay código compilado, plugin ni VPK instalable. No tocar la Vita principal todavía.
+
+
+## Correction to the import argument map
+
+The six-argument import at NID 0x8C36B628 does not receive the nested SceDisplaySetFrameBufForCompatOpt structure in argument 3. Firmware source shows argument 5 is the source framebuffer pointer (pParam) and argument 6 is the optional conversion/capture destination (convDst). Argument 3 is the crop-width parameter and must not be dereferenced as a structure. The diagnostic prototype has been revised accordingly. See research/PSPEMU_PLUGIN_SCOPE.md for exact wrapper and kernel mapping.
