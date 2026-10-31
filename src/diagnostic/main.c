@@ -123,6 +123,10 @@ int module_start(SceSize args, void *argp) {
   if (taiGetModuleInfo("ScePspemu", &info) < 0)
     return SCE_KERNEL_START_NO_RESIDENT;
 
+  /* This first probe is deliberately restricted to 3.60 retail PSPemu. */
+  if (info.module_nid != 0x2714F07D)
+    return SCE_KERNEL_START_NO_RESIDENT;
+
   g_hook_id = taiHookFunctionImport(
       &g_hook_ref, "ScePspemu",
       DISPLAY_USER_LIB_NID, DISPLAY_COMPAT_SET_FB_NID,
