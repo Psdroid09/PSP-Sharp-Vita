@@ -36,35 +36,33 @@ static int compat_set_framebuf_hook(
   (void)param2;
   (void)param3;
 
-  /* Capture only the first eight calls; never touch pixel memory. */
-  if (g_record_count < MAX_RECORDS) {
+  /* Capture only the first eight valid option blocks; never touch pixels. */
+  if (g_record_count < MAX_RECORDS &&
+      opt != NULL && ((uintptr_t)opt & 3u) == 0u &&
+      opt->size == sizeof(SceDisplaySetFrameBufForCompatOpt)) {
     ProbeRecord *r = &g_records[g_record_count];
     memset(r, 0, sizeof(*r));
     r->head = (unsigned int)head;
     r->index = (unsigned int)index;
     r->sync = (unsigned int)sync;
+    r->option_size = opt->size;
+    r->scale_y = opt->scale_y;
+    r->frame_buf_size = opt->frame_buf_size;
+    r->capture_frame_buf_size = opt->capture_frame_buf_size;
 
-    if (opt != NULL && ((uintptr_t)opt & 3u) == 0u &&
-        opt->size == sizeof(SceDisplaySetFrameBufForCompatOpt)) {
-      r->option_size = opt->size;
-      r->scale_y = opt->scale_y;
-      r->frame_buf_size = opt->frame_buf_size;
-      r->capture_frame_buf_size = opt->capture_frame_buf_size;
-
-      if (opt->frame_buf != NULL &&
-          ((uintptr_t)opt->frame_buf & 3u) == 0u &&
-          opt->frame_buf_size == sizeof(SceDisplayFrameBufForCompat) &&
-          opt->frame_buf->size == sizeof(SceDisplayFrameBufForCompat)) {
-        const SceDisplayFrameBufForCompat *fb = opt->frame_buf;
-        r->has_frame_buf = 1;
-        r->frame_buf_size_field = fb->size;
-        r->base = (unsigned int)(uintptr_t)fb->base;
-        r->pitch = fb->pitch;
-        r->pixelformat = fb->pixelformat;
-        r->width = fb->width;
-        r->height = fb->height;
-        r->flags = fb->flags;
-      }
+    if (opt->frame_buf != NULL &&
+        ((uintptr_t)opt->frame_buf & 3u) == 0u &&
+        opt->frame_buf_size == sizeof(SceDisplayFrameBufForCompat) &&
+        opt->frame_buf->size == sizeof(SceDisplayFrameBufForCompat)) {
+      const SceDisplayFrameBufForCompat *fb = opt->frame_buf;
+      r->has_frame_buf = 1;
+      r->frame_buf_size_field = fb->size;
+      r->base = (unsigned int)(uintptr_t)fb->base;
+      r->pitch = fb->pitch;
+      r->pixelformat = fb->pixelformat;
+      r->width = fb->width;
+      r->height = fb->height;
+      r->flags = fb->flags;
     }
     g_record_count++;
   }
