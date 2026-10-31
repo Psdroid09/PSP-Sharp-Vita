@@ -1,0 +1,41 @@
+name: Build PSPSharp diagnostic probe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "src/diagnostic/**"
+      - ".github/workflows/build-diagnostic.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    container:
+      image: vitasdk/vitasdk:2026.08
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install taiHEN development package
+        run: vdpm install taihen
+
+      - name: Configure
+        run: |
+          cmake -S src/diagnostic -B build/diagnostic \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: cmake --build build/diagnostic --parallel 2
+
+      - name: Verify output
+        run: |
+          test -s build/diagnostic/PSPSharpProbe.suprx
+          file build/diagnostic/PSPSharpProbe.suprx
+          ls -lh build/diagnostic/PSPSharpProbe.suprx
+
+      - name: Upload diagnostic plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PSPSharpProbe-suprx
+          path: build/diagnostic/PSPSharpProbe.suprx
+          if-no-files-found: error
