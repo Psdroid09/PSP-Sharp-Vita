@@ -59,3 +59,16 @@ Esos datos ayudan a comprender la arquitectura, pero no bastan para que un plugi
 ## Veredicto
 
 **Sin cambio en la decisión de seguridad:** todavía no hay un punto de integración probado para filtrar los frames de juegos Chovy-Sign en PSPemu stock. No compilar ni instalar un prototipo en la PS Vita principal.
+## Hallazgo adicional: implementación interna de SceCompat
+
+Se localizó una implementación de referencia de SceCompat en https://github.com/shoui520/psp2/tree/0261b5803d8108135d6cd8dc8660834d865b4e24/sys/internal/kernel/src/compat.
+
+El código de compat.c permite precisar el comportamiento de dos funciones:
+
+- compatFrameBufferInit recibe un SceUID de memblock, lo convierte a GUID, retiene una referencia al objeto y lo guarda en gCompatFrameBuffer. No devuelve una dirección de píxeles al llamador.
+- compatEnterRunningState obtiene la base virtual de ese memblock, la traduce a dirección física y programa los registros SceCompatLCDDMA con 480×272, stride 2048 y pixelFormat 2 cuando existe un framebuffer registrado.
+- compatLCDCSync espera a un punto de barrido horizontal (hcount) según el modo de pantalla; no copia ni devuelve el framebuffer.
+
+Esto aclara que SceCompatFrameBufferInit registra un bloque de memoria para el subsistema de salida LCDDMA. No es una API genérica de captura ni un getter del framebuffer interno del PSPemu. La ruta puede estar relacionada con la salida de compatibilidad/TV, pero la fuente revisada no basta para afirmar que sea el frame usado por una burbuja Chovy-Sign en la pantalla integrada.
+
+**Impacto en la decisión:** la implementación interna refuerza que SceCompat no ofrece el acceso simple que necesitamos. No usar esta API como atajo para inyectar un filtro; primero habría que identificar quién registra el memblock, en qué escenarios se activa LCDDMA y si ese bloque coincide con la superficie real que queremos procesar.
