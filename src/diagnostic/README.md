@@ -33,3 +33,8 @@ Expected output: PSPSharpProbe.suprx.
 Do not add it to the live ur0:tai/config.txt yet. The first hardware test should be performed only after a successful build, on a recoverable test setup, with the existing plugin configuration backed up. Remove the single *ALL entry and reboot to disable it.
 
 The report is a temporary diagnostic artifact, not production logging. Delete ux0:data/PSPSharp_compat_probe.txt after collecting it. No graphics filter is implemented by this probe.
+
+
+## ABI correction
+
+The hook uses the six-argument SceDisplayUser wrapper ABI. The source framebuffer is argument 5; argument 6 is the optional conversion/capture destination; argument 3 is not a pointer to the options block. The diagnostic source has been corrected to inspect argument 5 only. This is still uncompiled and untested.
