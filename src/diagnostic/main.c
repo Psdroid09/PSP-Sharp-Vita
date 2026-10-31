@@ -139,7 +139,7 @@ static void write_report(void) {
 
   used += snprintf(report + used, sizeof(report) - used,
                    "PSP-Sharp-Vita read-only probe\n"
-                   "Successful non-NULL source calls: %u\n"
+                   "Non-NULL source calls observed: %u\n"
                    "Calls with NULL source: %u\n"
                    "Invalid/unrecognized descriptors: %u\n"
                    "Metadata records retained: %u\n"
