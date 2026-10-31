@@ -71,5 +71,5 @@ El laboratorio solo procesa imágenes en PC. No es un plugin y no accede al PSPe
 
 ## Investigación del PSPemu stock
 
-Nueva auditoría de carga de plugins por proceso, identidad `NPXS10028`/`ScePspemu`, patrón `*ALL` + `taiGetModuleInfo` de NoPspEmuDrm y advertencias de compatibilidad de remaPSV: [research/PSPEMU_PLUGIN_SCOPE.md](research/PSPEMU_PLUGIN_SCOPE.md). Se confirma una ruta de detección del proceso PSPemu, pero todavía no un punto seguro de acceso al framebuffer. No instalar plugins ni editar `ur0:tai/config.txt` por ahora.
+Nueva auditoría de carga de plugins por proceso, identidad `NPXS10028`/`ScePspemu`, patrón `*ALL` + `taiGetModuleInfo` de NoPspEmuDrm y advertencias de compatibilidad de remaPSV: [research/PSPEMU_PLUGIN_SCOPE.md](research/PSPEMU_PLUGIN_SCOPE.md). Se confirma una ruta de detección del proceso PSPemu y se identificó el import `SceDisplaySetFrameBufForCompat` como candidato para una prueba de solo lectura; todavía no hay un framebuffer PSP validado ni filtro implementado. No instalar plugins ni editar `ur0:tai/config.txt` por ahora.
 
