@@ -106,19 +106,20 @@ It installs an import hook in module `ScePspemu` for library NID `0x4FAACD11`, f
 Implementation:
 https://github.com/TheOfficialFloW/Adrenaline/blob/7d382b7837d9d211d830017ba7aee982fa49a8c6/user/pops.c
 
-The current Adrenaline patch only substitutes a custom `pops_data` display buffer when `config.graphics_filtering != 0` and `pParam == NULL`. This is evidence that the compat display import can be intercepted, but it does **not** establish that the NULL case is the normal PSP-game presentation path; the `pops_data` naming and separate POPS handling indicate that this specific substitution is associated with PS1/POPS rendering.
+The current Adrenaline patch's sixth argument is not the primary source framebuffer. The firmware wrapper signature shows that the third argument is a sized options block, while the fifth and sixth arguments are separate optional sized parameters. Adrenaline names the sixth pointer `pParam` and substitutes its `pops_data` buffer when it is NULL; based on the firmware structure definitions, that final parameter corresponds to the optional capture destination, not the source framebuffer. Its POPS-specific `pops_data` use is therefore not proof of a PSP-game pixel-filter path.
 
 ### Proposed diagnostic-only experiment
 
-On firmware 3.60 retail, build a user plugin that follows the proven `*ALL` + `taiGetModuleInfo("ScePspemu")` pattern, then hooks only the `SceDisplaySetFrameBufForCompat` import in `ScePspemu`. The hook must:
+On firmware 3.60 retail, build a user plugin that follows the proven `*ALL` + `taiGetModuleInfo("ScePspemu")` pattern, then hooks only the `SceDisplaySetFrameBufForCompat` import in `ScePspemu`. The hook must use the firmware-verified six-argument wrapper signature and inspect the **third argument** as a `SceDisplaySetFrameBufForCompatOpt` block. It must:
 
-1. Never change `pParam`, its contents, or the return value.
-2. Record only whether `pParam` is NULL; when non-NULL, record `size`, `base`, `pitch`, `pixelformat`, `width`, and `height`.
-3. Rate-limit logging or capture only the first few calls; no per-frame file I/O.
-4. Verify the import hook succeeds and that PSP and PS1 titles still launch/exit normally.
-5. Be disabled by removing its single `*ALL` entry and rebooting.
+1. Never change the arguments, option block, nested framebuffer descriptors, or return value.
+2. Validate the option block size before reading it; record `scale_y`, whether `frame_buf` is NULL, and the nested source descriptor's `size`, `base`, `pitch`, `pixelformat`, `width`, `height`, and `flags` only when its size is valid.
+3. Treat the fifth/sixth sized parameters as optional capture-related arguments; do not confuse the sixth argument with the source framebuffer.
+4. Rate-limit logging or capture only the first few calls; no per-frame file I/O.
+5. Verify the import hook succeeds and that PSP and PS1 titles still launch/exit normally.
+6. Be disabled by removing its single `*ALL` entry and rebooting.
 
-This experiment would reveal whether the import exposes a useful PSP image surface and its metadata without touching pixels. It is not yet an image filter and must not be installed on the user's primary Vita until the binary is reviewed and a recovery path is prepared.
+This experiment would reveal whether PSPemu submits a source compatibility framebuffer through this import and provide its descriptor metadata without touching pixels. It is not yet an image filter and must not be installed on the user's primary Vita until the binary is reviewed and a recovery path is prepared.
 
 ### Firmware-specific evidence
 
@@ -173,3 +174,32 @@ The current development container does not have the VitaSDK cross-compiler (`arm
 ## Display descriptor clarification
 
 The SceDisplayFrameBuf `pitch` field is documented in the Vita SDK as a pixel pitch, not a byte count. Its structure is 0x18 bytes. Do not calculate a buffer length from width × height alone; row pitch and pixel format must both be known. The SDK's 0x1C-byte extended descriptor has a bilinear flag, but that is a display-driver descriptor feature and not proof of a custom programmable filter in PSPemu.
+
+
+## Critical correction: source framebuffer is nested in the third argument
+
+A deeper read of the firmware's own user-mode display wrapper corrected the interpretation of the Adrenaline hook's final argument.
+
+The firmware 3.60 implementation of sceDisplaySetFrameBufForCompat has the six-argument wrapper form:
+
+- arg1: display head
+- arg2: framebuffer index
+- arg3: pointer to a sized options block (SceDisplaySetFrameBufForCompatOpt)
+- arg4: sync mode
+- arg5: optional sized parameter
+- arg6: optional sized parameter
+
+The options block is 0x18 bytes and contains scale_y, frame_buf, capture_frame_buf, frame_buf_size, capture_frame_buf_size, and reserved. The actual source descriptor is nested in options.frame_buf and has type SceDisplayFrameBufForCompat (0x1C bytes), with base, pixel pitch, pixel format, dimensions, and flags. The optional capture destination is separate.
+
+The firmware wrapper passes arg3 to the internal display implementation as the options block and packages arg4–arg6 into syscall arguments. Its source comments explicitly state that the export is available only to a PSP emulator process.
+
+Primary references:
+- Firmware wrapper: https://github.com/shoui520/psp2/blob/0261b5803d8108135d6cd8dc8660834d865b4e24/sys/internal/usermode/src/driver_us/display.c
+- Firmware export definition and PSPemu-only note: https://github.com/shoui520/psp2/blob/0261b5803d8108135d6cd8dc8660834d865b4e24/sys/internal/usermode/src/driver_us/exports.yml
+- VitaSDK option and descriptor layouts: https://github.com/vitasdk/vita-headers/blob/e66ebe90b73d1fa4cce005a5b2072cec27322544/include/psp2/display.h
+
+### Updated technical assessment
+
+This is now the strongest lead in the project: the PSPemu-only compatibility display API has an explicit source-framebuffer descriptor. A read-only hook on this import may let us observe the actual buffer submitted by PSPemu without guessing PSP VRAM addresses. It still does not prove that the pointed memory is CPU-readable at the hook point, that PSPemu is finished writing it, or that a second CPU pass can safely modify it before scanout. Those are separate cache, ownership, synchronization, and performance questions.
+
+The diagnostic target is therefore the nested source descriptor in arg3, not Adrenaline's sixth argument. No pixel reads/writes, flag changes, or framebuffer substitution should occur in the first prototype.
