@@ -1,17 +1,19 @@
-# PSPemu read-only diagnostic probe (source only)
+# PSPemu read-only diagnostic probe
 
-This folder contains the first native plugin prototype for investigating the stock PSP emulator's compatibility framebuffer call.
+This is a diagnostic user plugin for investigating the stock PSP emulator's compatibility framebuffer call. It is **not a graphics filter**.
 
-## What it does
+## Behavior
 
-- Targets Vita firmware 3.60.
-- Is intended to load from taiHEN's *ALL section.
-- Calls taiGetModuleInfo("ScePspemu") and returns non-resident in every other app.
-- Hooks only SceDisplaySetFrameBufForCompat in the ScePspemu module.
-- Inspects the fifth argument as the optional source framebuffer descriptor and records the sixth argument only as an optional conversion/capture destination.
-- Copies metadata from at most eight non-NULL source descriptors; counts calls where the source pointer is NULL.
-- Does not read pixel data, modify framebuffer memory, change flags, replace buffers, or alter the original arguments/return value.
-- Writes one small report to ux0:data/PSPSharp_compat_probe.txt when the plugin unloads. There is no per-frame file I/O.
+- Target: Vita firmware 3.60 retail PSPemu module (`module_nid` 0x2714F07D).
+- Intended loading pattern: taiHEN `*ALL`; non-PSPemu processes return non-resident immediately.
+- Hooks only `SceDisplaySetFrameBufForCompat` in `ScePspemu`.
+- Preserves the six-argument ABI: argument 5 is the optional source descriptor; argument 6 is only recorded as present/absent; argument 3 is never dereferenced.
+- Calls the original firmware function first. It inspects the source descriptor only if the original call succeeds, and accepts only exact descriptor sizes 0x18 or 0x1C.
+- Retains at most eight metadata records. Counters/slot allocation use atomic increments.
+- Never dereferences the framebuffer pixel address, changes descriptors/flags, replaces buffers, changes the return value, or calls display APIs recursively.
+- Writes one small report to `ux0:data/PSPSharp_compat_probe.txt` on plugin unload; no per-frame file I/O.
+
+The source descriptor remains caller-owned. Reading its metadata after a successful firmware call reduces risk because the wrapper has already accepted/copied the descriptor, but this is not a formal memory-safety guarantee. Hardware validation is still required.
 
 ## Build
 
@@ -24,17 +26,15 @@ cmake -S src/diagnostic -B build/diagnostic \
 cmake --build build/diagnostic
 ~~~
 
-Expected output: PSPSharpProbe.suprx.
+Expected output: `PSPSharpProbe.suprx`.
 
-## Important status
+## Validation status
 
-**Not compiled or tested yet.** The current development environment does not contain the VitaSDK cross-compiler. This source must be built and reviewed before any installation is considered.
+- **CI build passed** for the initial diagnostic source at commit `bf5048e`; artifact `PSPSharpProbe-suprx` was uploaded.
+- A follow-up source-hardening change is being built separately; the earlier artifact does not contain those changes.
+- No test has been performed on a physical Vita.
+- No evidence yet proves that PSP game sessions submit a non-NULL descriptor, that its base is CPU-readable, or that a filter can run without racing GPU/display access.
 
-Do not add it to the live ur0:tai/config.txt yet. The first hardware test should be performed only after a successful build, on a recoverable test setup, with the existing plugin configuration backed up. Remove the single *ALL entry and reboot to disable it.
+**Do not install this plugin yet and do not add it to the live `ur0:tai/config.txt`.** The first hardware test requires a reviewed build, a reversible test setup, and a prepared recovery route. No changes to the user's Vita configuration or SD2Vita are part of this work.
 
-The report is a temporary diagnostic artifact, not production logging. Delete ux0:data/PSPSharp_compat_probe.txt after collecting it. No graphics filter is implemented by this probe.
-
-
-## ABI correction
-
-The hook uses the six-argument SceDisplayUser wrapper ABI. The source framebuffer is argument 5; argument 6 is the optional conversion/capture destination; argument 3 is not dereferenced. The source descriptor may be 0x18 or 0x1C bytes. This is still uncompiled and untested.
+The report is temporary diagnostic output, not production logging. Delete `ux0:data/PSPSharp_compat_probe.txt` after collecting it. No graphics filter is implemented by this probe.
