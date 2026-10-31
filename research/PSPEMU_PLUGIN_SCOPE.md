@@ -95,3 +95,31 @@ Do not add `*NPXS10028` to the user's `ur0:tai/config.txt` at this stage. Do not
 ## Next technical task
 
 Inspect the PSPemu module's display path and determine whether it exposes a stable import or internal function that receives the frame buffer immediately before presentation. Cross-check the 3.60 retail firmware specifically. Only after that should a diagnostic-only prototype be designed.
+
+## New lead: SceDisplaySetFrameBufForCompat import
+
+Adrenaline's public source provides a particularly useful lead for the display path:
+https://github.com/TheOfficialFloW/Adrenaline/blob/7d382b7837d9d211d830017ba7aee982fa49a8c6/user/main.c
+
+It installs an import hook in module `ScePspemu` for library NID `0x4FAACD11`, function NID `0x8C36B628`, using the patched function `sceDisplaySetFrameBufForCompatPatched`. The patch signature receives a `SceDisplayFrameBuf *pParam` as its final argument.
+
+Implementation:
+https://github.com/TheOfficialFloW/Adrenaline/blob/7d382b7837d9d211d830017ba7aee982fa49a8c6/user/pops.c
+
+The current Adrenaline patch only substitutes a custom `pops_data` display buffer when `config.graphics_filtering != 0` and `pParam == NULL`. This is evidence that the compat display import can be intercepted, but it does **not** establish that the NULL case is the normal PSP-game presentation path; the `pops_data` naming and separate POPS handling indicate that this specific substitution is associated with PS1/POPS rendering.
+
+### Proposed diagnostic-only experiment
+
+On firmware 3.60 retail, build a user plugin that follows the proven `*ALL` + `taiGetModuleInfo("ScePspemu")` pattern, then hooks only the `SceDisplaySetFrameBufForCompat` import in `ScePspemu`. The hook must:
+
+1. Never change `pParam`, its contents, or the return value.
+2. Record only whether `pParam` is NULL; when non-NULL, record `size`, `base`, `pitch`, `pixelformat`, `width`, and `height`.
+3. Rate-limit logging or capture only the first few calls; no per-frame file I/O.
+4. Verify the import hook succeeds and that PSP and PS1 titles still launch/exit normally.
+5. Be disabled by removing its single `*ALL` entry and rebooting.
+
+This experiment would reveal whether the import exposes a useful PSP image surface and its metadata without touching pixels. It is not yet an image filter and must not be installed on the user's primary Vita until the binary is reviewed and a recovery path is prepared.
+
+### Firmware-specific evidence
+
+Adrenaline checks `module_nid == 0x2714F07D` as the 3.60 retail ScePspemu build before applying several internal-offset hooks. Its `sceDisplaySetFrameBufForCompat` import hook is installed before that conditional, so the source demonstrates the import hook's use in the PSPemu process; still verify the exact import resolution on the user's 3.60 retail firmware before compiling a diagnostic.
