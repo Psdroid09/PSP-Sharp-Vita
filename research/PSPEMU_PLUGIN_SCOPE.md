@@ -150,3 +150,26 @@ The proposed diagnostic hook should therefore copy only the six documented field
 The sceDisplaySetFrameBufForCompat import remains a read-only observation candidate, not an implementation route. Adrenaline's patch only changes the NULL case and supplies a POPS buffer; its code does not show a PSP-game-specific pixel filter. The next experiment must first establish whether ordinary PSP game sessions call this import with a non-NULL descriptor and whether the reported dimensions/format match the expected PSP frame. If no useful calls are observed, stop pursuing this hook rather than forcing a patch.
 
 No filter, memory write, descriptor mutation, kernel patch, or console configuration change is authorized by this research stage.
+
+
+## Follow-up audit: exact global-plugin startup pattern
+
+The current NoPspEmuDrm source was inspected directly:
+
+- `user/Main.c` calls `taiGetModuleInfo("ScePspemu", &tai_info)` during user-plugin startup. If found, it dispatches to `pspemu_module_start(tai_info)`; if not, it returns `SCE_KERNEL_START_NO_RESIDENT`. This is the exact low-residency pattern suitable for a PSPemu-only diagnostic plugin loaded from `*ALL`.
+- `user/PspEmu.c` calls `sceKernelGetModuleInfo`, obtains the first segment's runtime virtual address, and installs import hooks with `taiHookFunctionImport` scoped to module name `ScePspemu`.
+- Its `pspemu_module_stop()` releases its import hooks. A future diagnostic plugin must likewise release every successfully installed hook and must not assume a hook ID is valid when installation failed.
+
+Sources:
+- https://github.com/LiEnby/NoPspEmuDrm/blob/main/user/Main.c
+- https://github.com/LiEnby/NoPspEmuDrm/blob/main/user/PspEmu.c
+
+This confirms that the global plugin can immediately become non-resident in ordinary applications and that hook installation can be restricted to the PSPemu module. It does not remove the need to test the plugin against other installed global plugins.
+
+## Build environment status
+
+The current development container does not have the VitaSDK cross-compiler (`arm-vita-eabi-gcc`) or `vita-make-fself` installed. Therefore no native `.suprx`/VPK has been compiled or validated in this environment. Source code must not be described as a tested binary until a VitaSDK build completes and the output is inspected.
+
+## Display descriptor clarification
+
+The SceDisplayFrameBuf `pitch` field is documented in the Vita SDK as a pixel pitch, not a byte count. Its structure is 0x18 bytes. Do not calculate a buffer length from width × height alone; row pitch and pixel format must both be known. The SDK's 0x1C-byte extended descriptor has a bilinear flag, but that is a display-driver descriptor feature and not proof of a custom programmable filter in PSPemu.
