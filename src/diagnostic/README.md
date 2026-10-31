@@ -8,7 +8,7 @@ This is a diagnostic user plugin for investigating the stock PSP emulator's comp
 - Intended loading pattern: taiHEN `*ALL`; non-PSPemu processes return non-resident immediately.
 - Hooks only `SceDisplaySetFrameBufForCompat` in `ScePspemu`.
 - Preserves the six-argument ABI: argument 5 is the optional source descriptor; argument 6 is only recorded as present/absent; argument 3 is never dereferenced.
-- Calls the original firmware function first. It inspects the source descriptor only if the original call succeeds, and accepts only exact descriptor sizes 0x18 or 0x1C.
+- Calls the original firmware function first. It inspects the source descriptor only if the original call succeeds, and accepts only exact descriptor sizes 0x18 or 0x1C and reports a limited metadata-sanity check (not proof of a valid/mapped framebuffer).
 - Retains at most eight metadata records. Counters/slot allocation use atomic increments.
 - Never dereferences the framebuffer pixel address, changes descriptors/flags, replaces buffers, changes the return value, or calls display APIs recursively.
 - Writes one small report to `ux0:data/PSPSharp_compat_probe.txt` on plugin unload; no per-frame file I/O.
