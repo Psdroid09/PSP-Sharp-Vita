@@ -116,7 +116,7 @@ static int compat_set_framebuf_hook(
             (const ProbeFrameBufCompat *)source_param;
         r->flags = ext->flags;
       }
-      r->descriptor_valid =
+      r->metadata_sanity =
           (fb->base != NULL && fb->width > 0 && fb->height > 0 &&
            fb->pitch >= fb->width);
       __sync_synchronize();
@@ -153,11 +153,11 @@ static void write_report(void) {
     used += snprintf(report + used, sizeof(report) - used,
                      "Call %u\n head=%u index=%u sync=%u\n"
                      "source_size=0x%X capture_present=%u\n"
-                     "descriptor_valid=%u base=0x%08X\n"
+                     "metadata_sanity=%u base=0x%08X\n"
                      "pitch=%u format=0x%08X width=%u height=%u flags=0x%08X\n\n",
                      i, r->head, r->index, r->sync,
                      r->source_size, r->capture_present,
-                     r->descriptor_valid, r->base,
+                     r->metadata_sanity, r->base,
                      r->pitch, r->pixelformat, r->width, r->height, r->flags);
   }
 
