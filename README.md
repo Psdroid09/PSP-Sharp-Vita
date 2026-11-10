@@ -4,7 +4,7 @@ Proyecto de investigación para estudiar si es posible mejorar la nitidez de los
 
 ## Objetivo
 
-Investigar una solución de nitidez que conserve los detalles de la imagen y que, si resulta técnicamente viable, pueda utilizarse con juegos PSP instalados como burbujas mediante **Chovy-Sign**.
+Investigar una solución de nitidez que conserve los detalles de la imagen y que, si resulta técnicamente viable, pueda utilizarse con juegos PSP instalados como burbujas mediante **Chovy-Sign**, sin depender de Adrenaline.
 
 ## Prioridades
 
@@ -14,67 +14,41 @@ Investigar una solución de nitidez que conserve los detalles de la imagen y que
 4. Evitar procesos en segundo plano, registros y escrituras innecesarias.
 5. Documentar claramente qué está comprobado y qué sigue siendo experimental.
 
-## Alcance inicial
-
-- Investigar cómo se escala y presenta la imagen de PSP en el entorno oficial de Vita.
-- Revisar las interfaces disponibles para plugins de Vita y sus límites en el proceso PSP.
-- Evaluar por separado las opciones existentes de escalado y filtrado.
-- Diseñar pruebas reversibles antes de considerar cualquier instalación en una consola real.
-
 ## Estado
 
-**Investigación técnica en curso.**
+**Investigación técnica en curso.** Ya existe un prototipo de diagnóstico nativo que compila con VitaSDK en GitHub Actions (última compilación aprobada: commit `2a92502`). El prototipo solo observa metadatos de una llamada de presentación de PSPemu; no aplica filtros y no ha sido probado en hardware.
 
-La auditoría inicial encontró que las soluciones existentes más cercanas trabajan en Adrenaline o cambian el escalado global; ninguna demuestra todavía un filtro personalizado seguro para burbujas Chovy-Sign en el PSPemu oficial. Consulta la evaluación de viabilidad en docs/TECHNICAL_FEASIBILITY.md y la auditoría de referencias en research/REFERENCE_AUDIT.md.
+La auditoría de referencias sigue sin encontrar una solución que demuestre un filtro personalizado seguro para burbujas Chovy-Sign. Consulta `research/TECHNICAL_FEASIBILITY.md`, `research/REFERENCE_AUDIT.md` y `research/PSPEMU_PLUGIN_SCOPE.md`.
 
 ## Seguridad
 
-**No instales archivos de este repositorio en tu PS Vita mientras no exista una versión publicada, revisada y probada.** Las pruebas iniciales deben realizarse fuera de la consola siempre que sea posible. Cualquier prueba en hardware deberá incluir instrucciones de instalación, desinstalación y recuperación.
+**No instales archivos de este repositorio en tu PS Vita todavía.** La compilación de CI no equivale a una prueba de funcionamiento ni de seguridad en una consola real. Cualquier prueba futura deberá incluir instrucciones de instalación, desinstalación y recuperación.
+
+No se ha modificado `ur0:tai/config.txt`, los plugins instalados ni el contenido de SD2Vita.
 
 ## Compatibilidad objetivo
 
-- PS Vita 1000 y 2000.
+- PS Vita 1000 y 2000 como objetivos de investigación.
 - Firmware 3.60 con Ensō como entorno de referencia inicial.
 - Juegos PSP ejecutados mediante el emulador oficial, incluidos los instalados con Chovy-Sign.
 
 La compatibilidad real se determinará mediante pruebas; estos puntos son objetivos, no garantías.
 
-## Estructura prevista
+## Herramientas
 
-```
-docs/       Investigación técnica y notas de compatibilidad
-research/   Referencias y experimentos reproducibles
-src/        Código, solo cuando exista un enfoque técnicamente validado
-tests/      Pruebas y herramientas de verificación
-```
+- `tools/filter_lab.py`: laboratorio offline para comparar nearest-neighbour, bilinear, sharp-bilinear aproximado y unsharp mask en PC.
+- `src/diagnostic/`: prototipo de observación PSPemu-only, sin lectura ni escritura de píxeles.
 
-## Idioma
+Consulta los README de cada carpeta para instrucciones y limitaciones.
 
-La documentación principal de este proyecto se mantiene en español.
+## Investigación técnica
 
+- [Auditoría SceCompat/SceDisplay](research/COMPAT_FRAMEBUFFER_API.md)
+- [Alcance del plugin PSPemu](research/PSPEMU_PLUGIN_SCOPE.md)
+- [Auditoría de referencias](research/REFERENCE_AUDIT.md)
+- [Prototipo de diagnóstico](src/diagnostic/README.md)
+- [Plan de validación en hardware (solo lectura)](research/HARDWARE_VALIDATION_PLAN.md)
 
-## Investigación del framebuffer
+El import candidato es `SceDisplaySetFrameBufForCompat`. El wrapper de firmware mapea el framebuffer de origen al quinto argumento y el destino opcional de conversión al sexto. El prototipo llama primero a la función original y solo inspecciona metadatos del descriptor de origen tras una llamada exitosa. No lee el área de píxeles ni modifica argumentos.
 
-Se añadió una auditoría de las APIs SceCompat y SceDisplay para determinar si existe una vía segura de observar el framebuffer PSP en PSPemu stock: [research/COMPAT_FRAMEBUFFER_API.md](research/COMPAT_FRAMEBUFFER_API.md). La conclusión sigue siendo que no hay un punto de integración demostrado para Chovy-Sign; no hay plugin ni VPK instalable.
-
-## Laboratorio de filtros (PC)
-
-Ya está disponible una herramienta offline para comparar nearest-neighbour, bilinear, una aproximación sharp-bilinear y unsharp mask con la misma imagen:
-
-- [Guía del laboratorio](tools/README.md)
-- [Script de comparación](tools/filter_lab.py)
-
-Prueba rápida: `python -m pip install Pillow` y después `python tools/filter_lab.py --synthetic --output comparison.png`.
-
-El laboratorio solo procesa imágenes en PC. No es un plugin y no accede al PSPemu ni a la PS Vita.
-
-
-## Investigación del PSPemu stock
-
-Nueva auditoría de carga de plugins por proceso, identidad `NPXS10028`/`ScePspemu`, patrón `*ALL` + `taiGetModuleInfo` de NoPspEmuDrm y advertencias de compatibilidad de remaPSV: [research/PSPEMU_PLUGIN_SCOPE.md](research/PSPEMU_PLUGIN_SCOPE.md). Se confirmó una ruta de detección del proceso PSPemu y se identificó el import `SceDisplaySetFrameBufForCompat`. La auditoría del wrapper de firmware mapea el framebuffer de origen al quinto argumento y el destino opcional de conversión al sexto. El prototipo observa el quinto argumento sin leer píxeles. Aún falta compilarlo y validar la compatibilidad en hardware. No hay filtro ni VPK instalable. No instalar plugins ni editar `ur0:tai/config.txt` por ahora.
-
-
-
-## Prototipo de diagnóstico (solo código fuente)
-
-Se añadió `src/diagnostic/` con un plugin PSPemu-only de observación: verifica PSPemu 3.60 retail, intercepta el import de compatibilidad y registra hasta ocho descriptores de origen recibidos en el quinto argumento, sin leer ni modificar píxeles. El informe se escribe una sola vez al salir del proceso. También se añadió un workflow de GitHub Actions para compilarlo con VitaSDK. **El código aún no está compilado ni probado; no instalarlo ni añadirlo a `config.txt`.** Consulta [src/diagnostic/README.md](src/diagnostic/README.md) y [build-diagnostic.yml](.github/workflows/build-diagnostic.yml).
+**Bloqueadores pendientes:** demostrar que juegos PSP reales envían un descriptor útil, validar su memoria/propiedad/sincronización y medir el coste antes de implementar cualquier filtro.
