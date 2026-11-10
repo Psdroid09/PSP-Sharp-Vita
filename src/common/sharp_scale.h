@@ -71,3 +71,5 @@ static inline int psp_sharp_rgba_scale(
   }
   return 0;
 }
+
+#endif /* PSP_SHARP_SCALE_H */
