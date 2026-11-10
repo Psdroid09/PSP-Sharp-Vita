@@ -25,3 +25,15 @@ Capturar un informe de una burbuja PSP y otro de una burbuja PS1/POPS; comparar 
 **No instalar en la consola principal ni modificar ur0:tai/config.txt por ahora.**
 
 Referencias: https://github.com/LiEnby/NoPspEmuDrm/blob/main/user/PspEmu.c ; https://www.psdevwiki.com/ps3/PBP ; https://www.psdevwiki.com/psp/PARAM.SFO
+
+## Filtro de nitidez de referencia (host, sin framebuffer Vita)
+
+Se agregó el escalador `src/common/sharp_scale.h`, sin dependencias de VitaSDK,
+para buffers RGBA8888 de propiedad del llamador. Permite mezcla bilinear
+(`strength=0`) y nearest-neighbour (`strength=256`), con valores intermedios.
+El objetivo es comparar la reducción de desenfoque frente al escalado bilineal;
+**no aumenta la resolución nativa 480×272 de los juegos PSP**.
+
+El algoritmo no se invoca desde el probe PSPemu; necesitaría un buffer
+independiente, una conversión de formato demostrada y sincronización segura.
+Pasar un puntero desconocido de PSPemu directamente al escalador está prohibido.
