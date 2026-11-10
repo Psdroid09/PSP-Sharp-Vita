@@ -32,6 +32,14 @@ jobs:
         run: cc -std=c11 -Wall -Wextra -Werror -pedantic -Isrc/common tests/psp_scope_test.c -o psp_scope_test
       - name: Verify PSP-only fail-closed policy
         run: ./psp_scope_test
+      - name: Compile bounded PBP/SFO parser tests
+        run: cc -std=c11 -Wall -Wextra -Werror -pedantic -Isrc/common tests/pbp_scope_test.c -o pbp_scope_test
+      - name: Verify PSP-vs-PS1 on PBP-shaped test vectors
+        run: ./pbp_scope_test
+      - name: Compile standalone RGBA scaler tests
+        run: cc -std=c11 -Wall -Wextra -Werror -pedantic -Isrc/common tests/sharp_scale_test.c -o sharp_scale_test
+      - name: Verify crisp scaling and bounds
+        run: ./sharp_scale_test
 
   build:
     runs-on: ubuntu-24.04

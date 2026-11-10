@@ -90,3 +90,19 @@ solo lectura la categoría del **proceso** mediante AppMgr.
 **Aún no podemos garantizar que la categoría del proceso corresponda al
 EBOOT.PBP del juego activo**. El filtro permanece deshabilitado hasta validar
 esta relación. Consulta [la investigación de detección automática](docs/AUTO_PSP_DETECTION.md).
+
+
+## Diagnóstico del EBOOT.PBP y filtro de referencia (noviembre 2026)
+
+- El nuevo `src/common/pbp_scope.h` analiza cabeceras PBP y el campo `CATEGORY`
+  de PARAM.SFO con límites estrictos; `EG/MG/UG` son candidatos PSP, `ME` PS1 excluido.
+- La herramienta `src/diagnostic/main.c` observa hasta 3 archivos `EBOOT.PBP` abiertos
+  por PSPemu, con lecturas de hasta 16 KiB por ruta, sin alterar los archivos ni las llamadas originales.
+- `src/common/sharp_scale.h` implementa un escalador **experimental** RGBA8888
+  en buffers propios: de bilinear a pixel nítido (nearest), fuerza 0–256.
+  Las pruebas corren en CI, pero **el escalador NO está conectado al framebuffer de PSPemu**.
+- Solo recopilar rutas o descriptores no prueba identidad del juego ni permite
+  leer o escribir memoria de pantalla. **No hay filtro activo ni plugin instalable probado.**
+
+Consulta [el documento técnico](docs/PBP_LAUNCH_PROBE.md) antes de considerar
+cualquier prueba de hardware. No instalarlo en la Vita principal.
