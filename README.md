@@ -71,10 +71,22 @@ El laboratorio solo procesa imágenes en PC. No es un plugin y no accede al PSPe
 
 ## Investigación del PSPemu stock
 
-Nueva auditoría de carga de plugins por proceso, identidad `NPXS10028`/`ScePspemu`, patrón `*ALL` + `taiGetModuleInfo` de NoPspEmuDrm y advertencias de compatibilidad de remaPSV: [research/PSPEMU_PLUGIN_SCOPE.md](research/PSPEMU_PLUGIN_SCOPE.md). Se confirmó una ruta de detección del proceso PSPemu y se identificó el import `SceDisplaySetFrameBufForCompat`. La auditoría del wrapper de firmware mapea el framebuffer de origen al quinto argumento y el destino opcional de conversión al sexto. El prototipo observa el quinto argumento sin leer píxeles. Aún falta compilarlo y validar la compatibilidad en hardware. No hay filtro ni VPK instalable. No instalar plugins ni editar `ur0:tai/config.txt` por ahora.
+Nueva auditoría de carga de plugins por proceso, identidad `NPXS10028`/`ScePspemu`, patrón `*ALL` + `taiGetModuleInfo` de NoPspEmuDrm y advertencias de compatibilidad de remaPSV: [research/PSPEMU_PLUGIN_SCOPE.md](research/PSPEMU_PLUGIN_SCOPE.md). Se confirmó una ruta de detección del proceso PSPemu y se identificó el import `SceDisplaySetFrameBufForCompat`. La auditoría del wrapper de firmware mapea el framebuffer de origen al quinto argumento y el destino opcional de conversión al sexto. El prototipo observa el quinto argumento sin leer píxeles. La compilación automática ya pasó; falta validar la compatibilidad y la observación real en hardware. No hay filtro ni VPK instalable. No instalar plugins ni editar `ur0:tai/config.txt` por ahora.
 
 
 
 ## Prototipo de diagnóstico (solo código fuente)
 
-Se añadió `src/diagnostic/` con un plugin PSPemu-only de observación: verifica PSPemu 3.60 retail, intercepta el import de compatibilidad y registra hasta ocho descriptores de origen recibidos en el quinto argumento, sin leer ni modificar píxeles. El informe se escribe una sola vez al salir del proceso. También se añadió un workflow de GitHub Actions para compilarlo con VitaSDK. **El código aún no está compilado ni probado; no instalarlo ni añadirlo a `config.txt`.** Consulta [src/diagnostic/README.md](src/diagnostic/README.md) y [build-diagnostic.yml](.github/workflows/build-diagnostic.yml).
+Se añadió `src/diagnostic/` con un plugin PSPemu-only de observación: verifica PSPemu 3.60 retail, intercepta el import de compatibilidad y registra hasta ocho descriptores de origen recibidos en el quinto argumento, sin leer ni modificar píxeles. El informe se escribe una sola vez al salir del proceso. También se añadió un workflow de GitHub Actions para compilarlo con VitaSDK. **GitHub Actions ya compila el código, pero no hay pruebas en hardware ni filtro funcional; no instalarlo ni añadirlo a `config.txt`.** Consulta [src/diagnostic/README.md](src/diagnostic/README.md) y [build-diagnostic.yml](.github/workflows/build-diagnostic.yml).
+
+
+## Detección automática PSP/PS1 (prototipo, noviembre de 2026)
+
+Se añadió un clasificador sin Title IDs individuales, que reconoce el campo
+`CATEGORY` (`EG`, `MG`, `UG` como candidatos PSP; `ME` como PS1
+excluido). También hay pruebas automatizadas y un probe que observa en modo
+solo lectura la categoría del **proceso** mediante AppMgr.
+
+**Aún no podemos garantizar que la categoría del proceso corresponda al
+EBOOT.PBP del juego activo**. El filtro permanece deshabilitado hasta validar
+esta relación. Consulta [la investigación de detección automática](docs/AUTO_PSP_DETECTION.md).

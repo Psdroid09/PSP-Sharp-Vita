@@ -28,13 +28,13 @@ Expected output: PSPSharpProbe.suprx.
 
 ## Important status
 
-**Not compiled or tested yet.** The current development environment does not contain the VitaSDK cross-compiler. This source must be built and reviewed before any installation is considered.
+**GitHub Actions compiles the SUPRX successfully, but it is not tested on Vita hardware.** A passing build is not proof of correct framebuffer behaviour or PSP/PS1 detection.
 
 Do not add it to the live ur0:tai/config.txt yet. The first hardware test should be performed only after a successful build, on a recoverable test setup, with the existing plugin configuration backed up. Remove the single *ALL entry and reboot to disable it.
 
-The report is a temporary diagnostic artifact, not production logging. Delete ux0:data/PSPSharp_compat_probe.txt after collecting it. No graphics filter is implemented by this probe.
+The diagnostic also records the SceAppMgr process CATEGORY in read-only mode; this can describe NPXS10028 rather than the actual game and must not activate filtering. See [automatic PSP detection](../../docs/AUTO_PSP_DETECTION.md). The report is a temporary diagnostic artifact, not production logging. Delete ux0:data/PSPSharp_compat_probe.txt after collecting it. No graphics filter is implemented by this probe.
 
 
 ## ABI correction
 
-The hook uses the six-argument SceDisplayUser wrapper ABI. The source framebuffer is argument 5; argument 6 is the optional conversion/capture destination; argument 3 is not dereferenced. The source descriptor may be 0x18 or 0x1C bytes. This is still uncompiled and untested.
+The hook uses the six-argument SceDisplayUser wrapper ABI. The source framebuffer is argument 5; argument 6 is the optional conversion/capture destination; argument 3 is not dereferenced. The source descriptor may be 0x18 or 0x1C bytes. This has compiled in GitHub Actions, but remains untested in hardware.

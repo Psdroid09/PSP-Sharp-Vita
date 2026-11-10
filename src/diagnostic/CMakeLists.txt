@@ -20,6 +20,7 @@ target_link_libraries(PSPSharpProbe
   taihen_stub
   SceLibKernel_stub
   SceIofilemgr_stub
+  SceAppMgr_stub
   SceLibc_stub_weak
 )
 set_target_properties(PSPSharpProbe PROPERTIES LINK_FLAGS "-nostdlib")

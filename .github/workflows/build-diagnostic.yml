@@ -7,6 +7,8 @@ on:
       - main
     paths:
       - "src/diagnostic/**"
+      - "src/common/**"
+      - "tests/**"
       - ".github/workflows/build-diagnostic.yml"
   pull_request:
     paths:
@@ -21,6 +23,16 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  scope-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile host-only category classifier tests
+        run: cc -std=c11 -Wall -Wextra -Werror -pedantic -Isrc/common tests/psp_scope_test.c -o psp_scope_test
+      - name: Verify PSP-only fail-closed policy
+        run: ./psp_scope_test
+
   build:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
