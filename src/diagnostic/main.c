@@ -6,6 +6,8 @@
 #include <vitasdk.h>
 #include <taihen.h>
 #include <psp2/display.h>
+#include <psp2/appmgr.h>
+#include "../common/psp_scope.h"
 #include <psp2/io/fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -49,6 +51,9 @@ static SceUID g_hook_id = -1;
 static ProbeRecord g_records[MAX_RECORDS];
 static unsigned int g_record_count;
 static unsigned int g_null_source_calls;
+static char g_app_category[8];
+static int g_category_read_result = -1;
+static PSPSharpContentScope g_content_candidate = PSP_SHARP_SCOPE_UNKNOWN;
 
 static int compat_set_framebuf_hook(
     int head, int index,
@@ -110,6 +115,14 @@ static void write_report(void) {
                    "No pixel memory was read or modified.\n\n",
                    g_record_count, g_null_source_calls);
 
+  used += snprintf(report + used, sizeof(report) - used,
+                   "AppMgr CATEGORY status=0x%08X bytes=%02X,%02X scope=%u\\n"
+                   "WARNING: process category is NOT verified PSP game metadata.\\n\\n",
+                   (unsigned int)g_category_read_result,
+                   (unsigned char)g_app_category[0],
+                   (unsigned char)g_app_category[1],
+                   (unsigned int)g_content_candidate);
+
   for (i = 0; i < g_record_count && used < (int)sizeof(report); i++) {
     const ProbeRecord *r = &g_records[i];
     used += snprintf(report + used, sizeof(report) - used,
@@ -149,6 +162,19 @@ int module_start(SceSize args, void *argp) {
   /* This first probe is deliberately restricted to 3.60 retail PSPemu. */
   if (info.module_nid != 0x2714F07D)
     return SCE_KERNEL_START_NO_RESIDENT;
+
+  /*
+   * Observe the current process SFO category without reading a Title ID.
+   * It may be NPXS10028 metadata, not the actual PSP/PS1 EBOOT.PBP;
+   * classify only as a candidate. Never enable a filter from this value.
+   */
+  memset(g_app_category, 0, sizeof(g_app_category));
+  g_category_read_result = sceAppMgrAppParamGetString(
+      0, SCE_APPMGR_APP_PARAM_CATEGORY,
+      g_app_category, sizeof(g_app_category));
+  if (g_category_read_result == 0)
+    g_content_candidate = psp_sharp_classify_category(
+        g_app_category, sizeof(g_app_category));
 
   g_hook_id = taiHookFunctionImport(
       &g_hook_ref, "ScePspemu",
