@@ -170,7 +170,7 @@ int module_start(SceSize args, void *argp) {
    */
   memset(g_app_category, 0, sizeof(g_app_category));
   g_category_read_result = sceAppMgrAppParamGetString(
-      0, SCE_APPMGR_APP_PARAM_CATEGORY,
+      0, 8, /* AppMgr CATEGORY parameter on firmware 3.60 */
       g_app_category, sizeof(g_app_category));
   if (g_category_read_result == 0)
     g_content_candidate = psp_sharp_classify_category(
