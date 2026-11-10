@@ -3,13 +3,27 @@ name: Build PSPSharp diagnostic probe
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
+    paths:
+      - "src/diagnostic/**"
+      - ".github/workflows/build-diagnostic.yml"
+  pull_request:
     paths:
       - "src/diagnostic/**"
       - ".github/workflows/build-diagnostic.yml"
 
+permissions:
+  contents: read
+
+concurrency:
+  group: psp-sharp-diagnostic-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     container:
       image: vitasdk/vitasdk:2026.08
     steps:
@@ -39,3 +53,4 @@ jobs:
           name: PSPSharpProbe-suprx
           path: build/diagnostic/PSPSharpProbe.suprx
           if-no-files-found: error
+          retention-days: 7
